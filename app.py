@@ -2,19 +2,16 @@
 import streamlit as st
 import pandas as pd
 import os
-import requests
 from datetime import datetime
+import yfinance as yf
 
-# --- Configuração da página ---
+# --- Configuração página ---
 st.set_page_config(
-    page_title="🔥 FIRE App Mobile",
+    page_title="FARIA PERSONAL APP",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
-# --- API Key Alpha Vantage ---
-ALPHA_VANTAGE_API_KEY = "TUA_API_KEY"  # <--- Coloca aqui a tua API Key
 
 # --- Pastas e CSVs ---
 if not os.path.exists("dados"):
@@ -30,39 +27,58 @@ def load_csv(name, columns):
 
 df_patrimonio = load_csv("patrimonio", ["Conta", "Valor"])
 df_poupanca = load_csv("poupanca", ["Mês", "Salario", "Despesas", "Investimentos"])
-df_buffett = load_csv("buffett", ["Ticker", "Score", "Data"])
+df_investimentos = load_csv("investimentos", ["Ticker", "Valor Intrinseco", "Score", "Data"])
 
 # --- Login com senha ---
 if 'acesso_permitido' not in st.session_state:
     st.session_state.acesso_permitido = False
+if 'codigo_inserido' not in st.session_state:
+    st.session_state.codigo_inserido = ''
+
+st.markdown("<h1 style='text-align:center; color:#FF6F61;'>FARIA PERSONAL APP</h1>", unsafe_allow_html=True)
 
 if not st.session_state.acesso_permitido:
-    st.markdown("<h1 style='text-align:center; color:#FF6F61;'>🔒 FIRE App Mobile</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;'>Insere o código de acesso</p>", unsafe_allow_html=True)
-    codigo = st.text_input("", type="password", placeholder="Código de acesso", key="senha")
-    if st.button("Entrar", key="login_button"):
-        if codigo == "1214":
+    codigo = st.text_input("CÓDIGO DE ACESSO", type="password", placeholder="Insere o código de acesso", key="senha")
+    if st.button("ENTRAR", key="login_btn"):
+        st.session_state.codigo_inserido = codigo
+        if st.session_state.codigo_inserido == "1214":
             st.session_state.acesso_permitido = True
-            st.experimental_rerun()
         else:
             st.error("Código incorreto! Tenta novamente.")
-else:
-    # --- Título e apresentação ---
-    st.markdown("<h1 style='text-align:center; color:#FF6F61;'>🔥 FIRE App Mobile</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#555;'>Organiza o teu património, poupança e investimentos de forma fácil</p>", unsafe_allow_html=True)
 
-    # --- Menu moderno ---
-    menu = st.radio(
+if st.session_state.acesso_permitido:
+    # --- Menu em caixas modernas ---
+    st.markdown("""
+    <style>
+    .menu-box {
+        background-color:#FF6F61;
+        color:white;
+        font-weight:bold;
+        font-family:sans-serif;
+        font-size:18px;
+        padding:15px;
+        border-radius:8px;
+        text-align:center;
+        cursor:pointer;
+        margin-bottom:10px;
+        text-transform:uppercase;
+    }
+    .menu-box:hover {
+        background-color:#FF8570;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    menu_selection = st.radio(
         "",
         ["📊 Património", "💵 Poupança", "📈 Investimentos"],
-        horizontal=True,
+        index=0,
+        horizontal=False,
         label_visibility="collapsed"
     )
 
     # --- Património ---
-    if menu == "📊 Património":
-        st.header("📊 Património Total")
-        st.markdown("---")
+    if menu_selection == "📊 Património":
         for i, row in df_patrimonio.iterrows():
             col1, col2 = st.columns([3,1])
             with col1:
@@ -72,34 +88,30 @@ else:
                 df_patrimonio.at[i, "Valor"] = valor
         df_patrimonio.to_csv("dados/patrimonio.csv", index=False)
         if not df_patrimonio.empty:
-            st.markdown("**Distribuição do Património**")
             st.table(df_patrimonio)
 
     # --- Poupança ---
-    elif menu == "💵 Poupança":
-        st.header("💵 Poupança Mensal")
-        st.markdown("---")
-        with st.expander("Adicionar Registo", expanded=True):
+    elif menu_selection == "💵 Poupança":
+        with st.expander("ADICIONAR REGISTO", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                mes = st.text_input("Mês", key="mes")
+                mes = st.text_input("MÊS", key="mes")
             with col2:
-                salario = st.number_input("Salário (€)", min_value=0.0, key="salario")
+                salario = st.number_input("SALÁRIO (€)", min_value=0.0, key="salario")
             with col3:
-                despesas = st.number_input("Despesas (€)", min_value=0.0, key="despesas")
+                despesas = st.number_input("DESPESAS (€)", min_value=0.0, key="despesas")
             with col4:
-                investimentos = st.number_input("Investimentos (€)", min_value=0.0, key="investimentos")
-            if st.button("Adicionar", key="add_poupanca"):
+                investimentos = st.number_input("INVESTIMENTOS (€)", min_value=0.0, key="investimentos")
+            if st.button("ADICIONAR", key="add_poupanca"):
                 df_poupanca.loc[len(df_poupanca)] = [mes, salario, despesas, investimentos]
                 df_poupanca.to_csv("dados/poupanca.csv", index=False)
                 st.success("Registo adicionado!")
 
         if not df_poupanca.empty:
-            st.subheader("📊 Histórico Poupança")
             for i, row in df_poupanca.iterrows():
                 col1, col2, col3, col4, col5 = st.columns([2,2,2,2,1])
                 with col1:
-                    st.write(f"**{row['Mês']}**")
+                    st.write(f"{row['Mês']}")
                 with col2:
                     st.write(f"Salário: €{row['Salario']}")
                 with col3:
@@ -107,7 +119,7 @@ else:
                 with col4:
                     st.write(f"Investimentos: €{row['Investimentos']}")
                 with col5:
-                    if st.button(f"Apagar {i}", key=f"del_{i}"):
+                    if st.button(f"APAGAR {i}", key=f"del_{i}"):
                         df_poupanca = df_poupanca.drop(i).reset_index(drop=True)
                         df_poupanca.to_csv("dados/poupanca.csv", index=False)
                         st.experimental_rerun()
@@ -115,31 +127,25 @@ else:
             df_poupanca["Poupanca (%)"] = (df_poupanca["Salario"] - df_poupanca["Despesas"] - df_poupanca["Investimentos"]) / df_poupanca["Salario"] * 100
             st.metric("Média Poupança", f"{df_poupanca['Poupanca (%)'].mean():.2f}%")
 
-    # --- Investimentos (antigo Faria Buffett 2.0) ---
-    elif menu == "📈 Investimentos":
-        st.header("📈 Investimentos")
-        st.markdown("---")
-        ticker = st.text_input("Ticker da ação (ex: AAPL)", key="buffett_ticker").upper()
+    # --- Investimentos ---
+    elif menu_selection == "📈 Investimentos":
+        ticker = st.text_input("TICKER (ex: AAPL)", key="ticker").upper()
         if ticker:
             try:
-                url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-                response = requests.get(url).json()
+                # Usando Yahoo Finance
+                stock = yf.Ticker(ticker)
+                info = stock.info
+                preco_atual = info.get("regularMarketPrice", 0)
+                eps = info.get("trailingEps", 0)
+                valor_intrinseco = eps * 15 if eps else 0
 
-                eps = float(response.get("EPS", 0))
-                PE_MEDIO = 15
-                valor_intrinseco = eps * PE_MEDIO
-                url_price = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
-                quote = requests.get(url_price).json().get("Global Quote", {})
-                preco_atual = float(quote.get("05. price", 0))
-
-                # Critérios investimento
-                revenue_growth = float(response.get("RevenueTTM", 0))
-                net_income = float(response.get("NetIncomeTTM", 0))
-                roic = float(response.get("ReturnOnEquityTTM", 0)) * 100
-                profit_margin = float(response.get("ProfitMargin", 0)) * 100
-                cfo = float(response.get("OperatingCashFlowTTM", 0))
-                debt_ratio = float(response.get("DebtToEquity", 0))
-                ebitda = float(response.get("EBITDA", 1))
+                revenue_growth = info.get("revenueGrowth", 0)
+                net_income = info.get("netIncomeToCommon", 0)
+                roic = info.get("returnOnEquity", 0) * 100
+                profit_margin = info.get("profitMargins", 0) * 100
+                cfo = info.get("operatingCashflow", 0)
+                debt_ratio = info.get("debtToEquity", 0)
+                ebitda = info.get("ebitda", 1)
 
                 criterios = {
                     "Crescimento Receita >7%": "✅" if revenue_growth > 0.07 else "❌",
@@ -161,13 +167,12 @@ else:
                 with col2:
                     st.metric("Score Total", f"{score}/{len(criterios)}")
 
-                st.subheader("Critérios")
                 for k, v in criterios.items():
                     color = "green" if v=="✅" else "red"
                     st.markdown(f"- {k}: <span style='color:{color}'>{v}</span>", unsafe_allow_html=True)
 
-                df_buffett.loc[len(df_buffett)] = [ticker, score, datetime.now()]
-                df_buffett.to_csv("dados/buffett.csv", index=False)
+                df_investimentos.loc[len(df_investimentos)] = [ticker, valor_intrinseco, score, datetime.now()]
+                df_investimentos.to_csv("dados/investimentos.csv", index=False)
 
             except Exception as e:
                 st.error(f"Erro ao buscar dados: {e}")
