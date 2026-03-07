@@ -5,12 +5,11 @@ import os
 from datetime import datetime
 import yfinance as yf
 
-# --- Configuração página ---
+# --- Configuração da página ---
 st.set_page_config(
     page_title="FARIA PERSONAL APP",
     page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 # --- Pastas e CSVs ---
@@ -29,25 +28,21 @@ df_patrimonio = load_csv("patrimonio", ["Conta", "Valor"])
 df_poupanca = load_csv("poupanca", ["Mês", "Salario", "Despesas", "Investimentos"])
 df_investimentos = load_csv("investimentos", ["Ticker", "Valor Intrinseco", "Score", "Data"])
 
-# --- Login com senha ---
-if 'acesso_permitido' not in st.session_state:
-    st.session_state.acesso_permitido = False
-if 'codigo_inserido' not in st.session_state:
-    st.session_state.codigo_inserido = ''
+# --- Login seguro ---
+if 'acesso' not in st.session_state:
+    st.session_state.acesso = False
 
-st.markdown("<h1 style='text-align:center; color:#FF6F61;'>FARIA PERSONAL APP</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center; color:#FF6F61; font-family:sans-serif;'>FARIA PERSONAL APP</h1>", unsafe_allow_html=True)
 
-if not st.session_state.acesso_permitido:
-    codigo = st.text_input("CÓDIGO DE ACESSO", type="password", placeholder="Insere o código de acesso", key="senha")
-    if st.button("ENTRAR", key="login_btn"):
-        st.session_state.codigo_inserido = codigo
-        if st.session_state.codigo_inserido == "1214":
-            st.session_state.acesso_permitido = True
+if not st.session_state.acesso:
+    codigo = st.text_input("", type="password", placeholder="Código de acesso")
+    if st.button("ENTRAR"):
+        if codigo == "1214":
+            st.session_state.acesso = True
         else:
-            st.error("Código incorreto! Tenta novamente.")
+            st.error("Código incorreto!")
 
-if st.session_state.acesso_permitido:
-    # --- Menu em caixas modernas ---
+if st.session_state.acesso:
     st.markdown("""
     <style>
     .menu-box {
@@ -55,12 +50,12 @@ if st.session_state.acesso_permitido:
         color:white;
         font-weight:bold;
         font-family:sans-serif;
-        font-size:18px;
-        padding:15px;
-        border-radius:8px;
+        font-size:20px;
+        padding:20px;
+        border-radius:12px;
         text-align:center;
+        margin:10px 0;
         cursor:pointer;
-        margin-bottom:10px;
         text-transform:uppercase;
     }
     .menu-box:hover {
@@ -69,16 +64,11 @@ if st.session_state.acesso_permitido:
     </style>
     """, unsafe_allow_html=True)
 
-    menu_selection = st.radio(
-        "",
-        ["📊 Património", "💵 Poupança", "📈 Investimentos"],
-        index=0,
-        horizontal=False,
-        label_visibility="collapsed"
-    )
+    # Menu em boxes clicáveis
+    menu_choice = st.radio("", ["📊 Património", "💵 Poupança", "📈 Investimentos"], index=0, label_visibility="collapsed")
 
     # --- Património ---
-    if menu_selection == "📊 Património":
+    if menu_choice == "📊 Património":
         for i, row in df_patrimonio.iterrows():
             col1, col2 = st.columns([3,1])
             with col1:
@@ -91,7 +81,7 @@ if st.session_state.acesso_permitido:
             st.table(df_patrimonio)
 
     # --- Poupança ---
-    elif menu_selection == "💵 Poupança":
+    elif menu_choice == "💵 Poupança":
         with st.expander("ADICIONAR REGISTO", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -128,11 +118,10 @@ if st.session_state.acesso_permitido:
             st.metric("Média Poupança", f"{df_poupanca['Poupanca (%)'].mean():.2f}%")
 
     # --- Investimentos ---
-    elif menu_selection == "📈 Investimentos":
+    elif menu_choice == "📈 Investimentos":
         ticker = st.text_input("TICKER (ex: AAPL)", key="ticker").upper()
         if ticker:
             try:
-                # Usando Yahoo Finance
                 stock = yf.Ticker(ticker)
                 info = stock.info
                 preco_atual = info.get("regularMarketPrice", 0)
