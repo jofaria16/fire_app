@@ -7,10 +7,11 @@ import time
 
 st.set_page_config(page_title="FARIA PERSONAL APP", page_icon="💰", layout="wide")
 
-# ---------------- FOLDER ----------------
+# ---------- CRIAR PASTA ----------
 if not os.path.exists("dados"):
     os.makedirs("dados")
 
+# ---------- FUNÇÃO CSV ----------
 def load_csv(name, columns):
 
     path = f"dados/{name}.csv"
@@ -19,7 +20,6 @@ def load_csv(name, columns):
 
         df = pd.read_csv(path)
 
-        # garantir colunas
         for c in columns:
             if c not in df.columns:
                 df[c] = 0
@@ -29,29 +29,30 @@ def load_csv(name, columns):
         return df
 
     df = pd.DataFrame(columns=columns)
-    df.to_csv(path,index=False)
+    df.to_csv(path, index=False)
 
     return df
 
 
-# ---------------- CSVs ----------------
+# ---------- CSVs ----------
 
 df_patrimonio = load_csv(
-"patrimonio",
-["Mês","T212","IBKR","CRYPTO","PPR","TOTAL"]
+    "patrimonio",
+    ["Mês","T212","IBKR","CRYPTO","PPR","TOTAL"]
 )
 
 df_poupanca = load_csv(
-"poupanca",
-["Mês","Salario","Despesas","Investimentos","Outros"]
+    "poupanca",
+    ["Mês","Salario","Despesas","Investimentos","Outros"]
 )
 
 df_investimentos = load_csv(
-"investimentos",
-["Ticker","Valor Intrinseco","Score","Data"]
+    "investimentos",
+    ["Ticker","Valor Intrinseco","Score","Data"]
 )
 
-# ---------------- LOGIN ----------------
+
+# ---------- LOGIN ----------
 
 if "acesso" not in st.session_state:
     st.session_state.acesso = False
@@ -63,19 +64,21 @@ unsafe_allow_html=True
 
 if not st.session_state.acesso:
 
-    codigo = st.text_input("",type="password",placeholder="CÓDIGO DE ACESSO")
+    codigo = st.text_input("", type="password", placeholder="CÓDIGO DE ACESSO")
 
     if st.button("ENTRAR"):
 
         if codigo == "1214":
+
             st.session_state.acesso = True
             st.rerun()
 
         else:
+
             st.error("CÓDIGO INCORRETO")
 
 
-# ---------------- MENU ----------------
+# ---------- MENU ----------
 
 def menu_button(label,key):
 
@@ -141,19 +144,17 @@ if st.session_state.acesso:
                     "TOTAL":total
                 }
 
-                global df_patrimonio
-
                 df_patrimonio.loc[len(df_patrimonio)] = novo
 
                 df_patrimonio = df_patrimonio.sort_values(
-                by="Mês",
-                ascending=False,
-                ignore_index=True
+                    by="Mês",
+                    ascending=False,
+                    ignore_index=True
                 )
 
                 df_patrimonio.to_csv(
-                "dados/patrimonio.csv",
-                index=False
+                    "dados/patrimonio.csv",
+                    index=False
                 )
 
                 st.success("REGISTO GUARDADO")
@@ -196,8 +197,8 @@ if st.session_state.acesso:
                         df_patrimonio = df_patrimonio.drop(i)
 
                         df_patrimonio.to_csv(
-                        "dados/patrimonio.csv",
-                        index=False
+                            "dados/patrimonio.csv",
+                            index=False
                         )
 
                         st.rerun()
@@ -241,8 +242,6 @@ if st.session_state.acesso:
 
         if st.button("GUARDAR"):
 
-            global df_poupanca
-
             df_poupanca.loc[len(df_poupanca)] = [
                 mes,
                 salario,
@@ -252,8 +251,8 @@ if st.session_state.acesso:
             ]
 
             df_poupanca.to_csv(
-            "dados/poupanca.csv",
-            index=False
+                "dados/poupanca.csv",
+                index=False
             )
 
             st.success("GUARDADO")
@@ -267,15 +266,15 @@ if st.session_state.acesso:
             df_plot = df_poupanca.copy()
 
             df_plot["Poupança %"] = (
-            (df_plot["Salario"]
-            - df_plot["Despesas"]
-            - df_plot["Investimentos"]
-            - df_plot["Outros"])
-            / df_plot["Salario"]*100
+                (df_plot["Salario"]
+                - df_plot["Despesas"]
+                - df_plot["Investimentos"]
+                - df_plot["Outros"])
+                / df_plot["Salario"]*100
             )
 
             st.line_chart(
-            df_plot.set_index("Mês")["Poupança %"]
+                df_plot.set_index("Mês")["Poupança %"]
             )
 
 
