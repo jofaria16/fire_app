@@ -7,6 +7,44 @@ import time
 
 st.set_page_config(page_title="FARIA PERSONAL APP", page_icon="💰", layout="wide")
 
+st.markdown("""
+<style>
+
+.stApp {
+background-color:#0f172a;
+color:white;
+}
+
+div[data-testid="stMetric"]{
+background-color:#1e293b;
+padding:20px;
+border-radius:15px;
+text-align:center;
+}
+
+.stButton button{
+background: linear-gradient(90deg,#3b82f6,#06b6d4);
+color:white;
+font-weight:bold;
+border-radius:10px;
+height:50px;
+font-size:16px;
+border:none;
+}
+
+.stButton button:hover{
+background: linear-gradient(90deg,#2563eb,#0891b2);
+}
+
+input, textarea{
+background-color:#1e293b !important;
+color:white !important;
+border-radius:8px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # ---------- CRIAR PASTA ----------
 if not os.path.exists("dados"):
     os.makedirs("dados")
@@ -311,3 +349,4 @@ if st.session_state.acesso:
             except:
 
                 st.warning("Yahoo Finance limitou pedidos. Tente novamente em alguns segundos.")
+
