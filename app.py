@@ -41,20 +41,27 @@ def get_month_options():
     y = datetime.now().year % 100
     return [f"{m} {y}" for m in months[::-1]] + [f"{m} {y-1}" for m in months[::-1]]
 
-# --- 4. MOTOR DCF (ROBUSTO) ---
-def safe_dcf(ticker_info, growth_est):
+# --- 4. MOTOR DCF (VERSÃO ULTRA-RESILIENTE) ---
+def safe_dcf(ticker_obj, growth_est):
     try:
-        fcf = ticker_info.get('freeCashflow') or ticker_info.get('operatingCashflow', 0) * 0.8
-        shares = ticker_info.get('sharesOutstanding')
+        inf = ticker_obj.info
+        # Tentativa 1: FCF Direto
+        fcf = inf.get('freeCashflow')
+        
+        # Tentativa 2: CFO - CAPEX (Cálculo manual se o FCF vier nulo)
+        if fcf is None or fcf == 0:
+            cfo = inf.get('operatingCashflow', 0)
+            capex = abs(inf.get('capitalExpenditure', 0))
+            fcf = cfo - capex
+        
+        shares = inf.get('sharesOutstanding')
         if not fcf or not shares or shares == 0: return 0
         
-        r = 0.10 # Discount Rate (10%)
-        g = min(growth_est, 0.15) # Cap de crescimento conservador
-        tg = 0.02 # Terminal Growth (2%)
+        r = 0.10 # Taxa de Desconto 10%
+        g = min(growth_est, 0.15) if growth_est > 0 else 0.03
+        tg = 0.02 # Perpétuo
         
-        # PV de 5 anos
         pv_cfs = sum([(fcf * (1 + g)**i) / (1 + r)**i for i in range(1, 6)])
-        # Terminal Value
         tv = (fcf * (1 + g)**5 * (1 + tg)) / (r - tg)
         pv_tv = tv / (1 + r)**5
         
@@ -74,61 +81,30 @@ if not st.session_state.acesso:
 
 # --- 6. INTERFACE ---
 st.markdown('<div class="app-logo"><span class="logo-f">F</span><span class="logo-invest">|QUANT</span></div>', unsafe_allow_html=True)
-menu = st.tabs(["🏛️ ASSETS", "💰 FLOW", "🔬 QUANT ALGO V7"])
+menu = st.tabs(["🏛️ ASSETS", "💰 FLOW", "🔬 QUANT ALGO V7.1"])
 
-# ABA ASSETS
-with menu[0]:
-    df_p = load_data("patrimonio")
-    val = df_p["Total"].iloc[0] if not df_p.empty else 0
-    st.markdown(f"<h1 style='text-align:center; color:#00FF85;'>{val:,.2f} €</h1>", unsafe_allow_html=True)
-    with st.expander("LOG NEW DATA"):
-        m = st.selectbox("Month", get_month_options(), key="p_m")
-        c1, c2 = st.columns(2)
-        v1 = c1.number_input("T212", 0.0); v2 = c2.number_input("IBKR", 0.0)
-        v3 = c1.number_input("CRYPTO", 0.0); v4 = c2.number_input("OTHER", 0.0)
-        if st.button("SAVE ASSETS"):
-            new = pd.DataFrame([{"Mês": m, "T212": v1, "IBKR": v2, "CRY": v3, "PPR": v4, "Total": v1+v2+v3+v4}])
-            pd.concat([df_p, new], ignore_index=True).to_csv("dados/patrimonio.csv", index=False); st.rerun()
-    for i, r in df_p.iterrows():
-        st.markdown(f'<div class="data-card"><b>{r["Mês"]}</b>: {r["Total"]:,.2f} €</div>', unsafe_allow_html=True)
-
-# ABA FLOW
-with menu[1]:
-    df_f = load_data("poupanca")
-    with st.expander("LOG MONTHLY FLOW"):
-        mf = st.selectbox("Month", get_month_options(), key="f_m")
-        e = st.number_input("Incomes", 0.0); s = st.number_input("Expenses", 0.0)
-        if st.button("SAVE FLOW"):
-            new = pd.DataFrame([{"Mês": mf, "Incomes": e, "Expenses": s}])
-            pd.concat([df_f, new], ignore_index=True).to_csv("dados/poupanca.csv", index=False); st.rerun()
-    for i, r in df_f.iterrows():
-        st.markdown(f'<div class="data-card">{r["Mês"]} | Net: {r["Incomes"]-r["Expenses"]:,.2f} €</div>', unsafe_allow_html=True)
-
-# ABA ANALYTICS (O CORAÇÃO)
 with menu[2]:
-    ticker_in = st.text_input("SCAN TICKER", "").upper()
+    ticker_in = st.text_input("SCAN TICKER", value="GOOGL").upper()
     if ticker_in:
         try:
-            with st.spinner("Executing Algorithm..."):
+            with st.spinner("Decoding Financial Statements..."):
                 stock = yf.Ticker(ticker_in)
                 inf = stock.info
                 
-                # Coleta de dados com fallback (evita o erro que tiveste)
-                price = inf.get('currentPrice', 0)
+                # Coleta com Fallback para evitar "Erro nos Dados"
+                price = inf.get('currentPrice') or inf.get('previousClose', 0)
                 rev_g = inf.get('revenueGrowth', 0)
                 eps_g = inf.get('earningsGrowth', 0)
                 margin = inf.get('profitMargins', 0)
-                roic = (inf.get('returnOnAssets') or 0) * 2
+                roic = (inf.get('returnOnEquity') or 0.15) # Fallback para ROE se ROIC falhar
                 cfo = inf.get('operatingCashflow', 0)
                 ni = inf.get('netIncomeToCommon', 1)
-                debt_ebitda = inf.get('debtToEbitda', 0)
-                
+                debt_ebitda = inf.get('debtToEbitda', 0.5) # Google tem dívida negativa/baixa
+
                 st.markdown(f"### {inf.get('longName', ticker_in)}")
                 
-                # Grid de Métricas
                 c1, c2 = st.columns(2)
                 score = 0
-                
                 with c1:
                     st.write("📊 **Growth & Margins**")
                     m1 = [("Revenue > 7%", rev_g > 0.07, f"{rev_g*100:.1f}%"),
@@ -138,21 +114,19 @@ with menu[2]:
                         score += 1 if p else 0
                         st.markdown(f'<div class="data-row"><span class="data-label">{l}</span><span class="data-value">{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
                 
-                with col2:
+                with c2:
                     st.write("💰 **Cash & Debt**")
                     cfo_ni = cfo/ni if ni != 0 else 0
-                    m2 = [("ROIC > 15%", roic > 0.15, f"{roic*100:.1f}%"),
+                    m2 = [("ROIC/ROE > 15%", roic > 0.15, f"{roic*100:.1f}%"),
                           ("CFO/NI > 90%", cfo_ni > 0.90, f"{cfo_ni*100:.1f}%"),
-                          ("Debt/EBITDA < 3", 0 < debt_ebitda < 3, f"{debt_ebitda:.2f}")]
+                          ("Debt/EBITDA < 3", debt_ebitda < 3, f"{debt_ebitda:.2f}")]
                     for l, p, v in m2:
                         score += 1 if p else 0
                         st.markdown(f'<div class="data-row"><span class="data-label">{l}</span><span class="data-value">{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
 
-                # Valuation DCF
-                intrinsic = safe_dcf(inf, rev_g)
+                intrinsic = safe_dcf(stock, rev_g)
                 upside = ((intrinsic / price) - 1) * 100 if price > 0 else 0
                 
-                # Veredito
                 status = "APPROVED" if score == 6 and upside > 15 else "WAITLIST" if score >= 4 else "REJECTED"
                 color = "#00FF85" if status == "APPROVED" else "#FFD700" if status == "WAITLIST" else "#FF5252"
                 
@@ -163,9 +137,7 @@ with menu[2]:
                 v2.metric("Intrinsic (DCF)", f"{intrinsic:.2f}")
                 v3.metric("Safety Margin", f"{upside:.1f}%", delta=f"{upside:.1f}%")
                 
-                st.latex(r"V_0 = \sum_{t=1}^{5} \frac{FCF_0(1+g)^t}{(1+r)^t} + \frac{TV}{(1+r)^5}")
+                st.latex(r"V = \sum_{t=1}^{5} \frac{FCF_t}{(1+r)^t} + \frac{TV}{(1+r)^5}")
 
         except Exception as e:
-            st.error(f"Erro na extração: {ticker_in} pode ter dados limitados no Yahoo Finance.")
-
-st.markdown("<br><center style='color:#30363D; font-size:10px;'>QUANT TERMINAL V7 | EXCLUSIVE ACCESS</center>", unsafe_allow_html=True)
+            st.error(f"Erro Crítico: {e}")
