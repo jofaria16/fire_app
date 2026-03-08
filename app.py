@@ -5,12 +5,8 @@ import os
 from datetime import datetime
 import yfinance as yf
 
-# --- Configuração da página ---
-st.set_page_config(
-    page_title="FARIA PERSONAL APP",
-    page_icon="💰",
-    layout="wide"
-)
+# --- Configuração página ---
+st.set_page_config(page_title="FARIA PERSONAL APP", page_icon="💰", layout="wide")
 
 # --- Pastas e CSVs ---
 if not os.path.exists("dados"):
@@ -24,11 +20,10 @@ def load_csv(name, columns):
     df.to_csv(path, index=False)
     return df
 
-df_patrimonio = load_csv("patrimonio", ["Conta", "Valor"])
 df_poupanca = load_csv("poupanca", ["Mês", "Salario", "Despesas", "Investimentos"])
 df_investimentos = load_csv("investimentos", ["Ticker", "Valor Intrinseco", "Score", "Data"])
 
-# --- Login seguro ---
+# --- Login ---
 if 'acesso' not in st.session_state:
     st.session_state.acesso = False
 
@@ -42,46 +37,51 @@ if not st.session_state.acesso:
         else:
             st.error("Código incorreto!")
 
-if st.session_state.acesso:
-    st.markdown("""
-    <style>
-    .menu-box {
-        background-color:#FF6F61;
-        color:white;
-        font-weight:bold;
-        font-family:sans-serif;
-        font-size:20px;
-        padding:20px;
-        border-radius:12px;
-        text-align:center;
-        margin:10px 0;
-        cursor:pointer;
-        text-transform:uppercase;
-    }
-    .menu-box:hover {
-        background-color:#FF8570;
-    }
-    </style>
+# --- Função para criar menu estilo botão ---
+def menu_button(name, key, color="#FF6F61"):
+    st.markdown(f"""
+        <div style="
+            background-color:{color};
+            color:white;
+            font-weight:bold;
+            font-family:sans-serif;
+            font-size:18px;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+            cursor:pointer;
+            margin-bottom:10px;
+            text-transform:uppercase;">
+            {name}
+        </div>
     """, unsafe_allow_html=True)
+    return st.button(name, key=key)
 
-    # Menu em boxes clicáveis
-    menu_choice = st.radio("", ["📊 Património", "💵 Poupança", "📈 Investimentos"], index=0, label_visibility="collapsed")
+if st.session_state.acesso:
+    # Menu principal
+    st.markdown("---")
+    if menu_button("📊 Património", "patrimonio", "#1E90FF"):
+        menu_choice = "patrimonio"
+    elif menu_button("💵 Poupança", "poupanca", "#32CD32"):
+        menu_choice = "poupanca"
+    elif menu_button("📈 Investimentos", "investimentos", "#FF6F61"):
+        menu_choice = "investimentos"
+    else:
+        menu_choice = None
 
     # --- Património ---
-    if menu_choice == "📊 Património":
-        for i, row in df_patrimonio.iterrows():
-            col1, col2 = st.columns([3,1])
-            with col1:
-                st.markdown(f"**{row['Conta']}**")
-            with col2:
-                valor = st.number_input("", value=float(row['Valor']), key=f"pat_{i}", format="%.2f")
-                df_patrimonio.at[i, "Valor"] = valor
-        df_patrimonio.to_csv("dados/patrimonio.csv", index=False)
-        if not df_patrimonio.empty:
-            st.table(df_patrimonio)
+    if menu_choice == "patrimonio":
+        st.subheader("Adicionar os valores do seu portfolio")
+        t212 = st.number_input("T212 (€)", min_value=0.0, key="t212")
+        ibkr = st.number_input("IBKR (€)", min_value=0.0, key="ibkr")
+        crypto = st.number_input("CRYPTO (€)", min_value=0.0, key="crypto")
+        ppr = st.number_input("PPR (€)", min_value=0.0, key="ppr")
+
+        total_portfolio = t212 + ibkr + crypto + ppr
+        st.metric("TOTAL PORTFOLIO", f"€{total_portfolio:.2f}")
 
     # --- Poupança ---
-    elif menu_choice == "💵 Poupança":
+    elif menu_choice == "poupanca":
         with st.expander("ADICIONAR REGISTO", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -118,7 +118,7 @@ if st.session_state.acesso:
             st.metric("Média Poupança", f"{df_poupanca['Poupanca (%)'].mean():.2f}%")
 
     # --- Investimentos ---
-    elif menu_choice == "📈 Investimentos":
+    elif menu_choice == "investimentos":
         ticker = st.text_input("TICKER (ex: AAPL)", key="ticker").upper()
         if ticker:
             try:
