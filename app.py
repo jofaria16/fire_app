@@ -7,38 +7,53 @@ import time
 
 st.set_page_config(page_title="FARIA PERSONAL APP", page_icon="💰", layout="wide")
 
-# ---------- PASTA DADOS ----------
+# ---------------- FOLDER ----------------
 if not os.path.exists("dados"):
     os.makedirs("dados")
 
 def load_csv(name, columns):
+
     path = f"dados/{name}.csv"
+
     if os.path.exists(path):
-        return pd.read_csv(path)
+
+        df = pd.read_csv(path)
+
+        # garantir colunas
+        for c in columns:
+            if c not in df.columns:
+                df[c] = 0
+
+        df = df[columns]
+
+        return df
+
     df = pd.DataFrame(columns=columns)
-    df.to_csv(path, index=False)
+    df.to_csv(path,index=False)
+
     return df
 
 
-# ---------- CSVs ----------
+# ---------------- CSVs ----------------
+
 df_patrimonio = load_csv(
-    "patrimonio",
-    ["Mês","T212","IBKR","CRYPTO","PPR","TOTAL"]
+"patrimonio",
+["Mês","T212","IBKR","CRYPTO","PPR","TOTAL"]
 )
 
 df_poupanca = load_csv(
-    "poupanca",
-    ["Mês","Salario","Despesas","Investimentos","Outros"]
+"poupanca",
+["Mês","Salario","Despesas","Investimentos","Outros"]
 )
 
 df_investimentos = load_csv(
-    "investimentos",
-    ["Ticker","Valor Intrinseco","Score","Data"]
+"investimentos",
+["Ticker","Valor Intrinseco","Score","Data"]
 )
 
+# ---------------- LOGIN ----------------
 
-# ---------- LOGIN ----------
-if 'acesso' not in st.session_state:
+if "acesso" not in st.session_state:
     st.session_state.acesso = False
 
 st.markdown(
@@ -48,11 +63,7 @@ unsafe_allow_html=True
 
 if not st.session_state.acesso:
 
-    codigo = st.text_input(
-        "",
-        type="password",
-        placeholder="CÓDIGO DE ACESSO"
-    )
+    codigo = st.text_input("",type="password",placeholder="CÓDIGO DE ACESSO")
 
     if st.button("ENTRAR"):
 
@@ -64,14 +75,12 @@ if not st.session_state.acesso:
             st.error("CÓDIGO INCORRETO")
 
 
-# ---------- MENU ----------
-def menu_button(label,key,color):
+# ---------------- MENU ----------------
 
-    if st.button(
-        label,
-        key=key,
-        use_container_width=True
-    ):
+def menu_button(label,key):
+
+    if st.button(label,use_container_width=True):
+
         st.session_state.menu = key
 
 
@@ -82,13 +91,14 @@ if st.session_state.acesso:
     col1,col2,col3 = st.columns(3)
 
     with col1:
-        menu_button("📊 PATRIMÓNIO","patrimonio","#1E90FF")
+        menu_button("📊 PATRIMÓNIO","patrimonio")
 
     with col2:
-        menu_button("💵 POUPANÇA","poupanca","#32CD32")
+        menu_button("💵 POUPANÇA","poupanca")
 
     with col3:
-        menu_button("📈 INVESTIMENTOS","investimentos","#FF6F61")
+        menu_button("📈 INVESTIMENTOS","investimentos")
+
 
 # =====================================================
 # PATRIMÓNIO
@@ -131,23 +141,25 @@ if st.session_state.acesso:
                     "TOTAL":total
                 }
 
+                global df_patrimonio
+
                 df_patrimonio.loc[len(df_patrimonio)] = novo
 
                 df_patrimonio = df_patrimonio.sort_values(
-                    by="Mês",
-                    ascending=False
+                by="Mês",
+                ascending=False,
+                ignore_index=True
                 )
 
                 df_patrimonio.to_csv(
-                    "dados/patrimonio.csv",
-                    index=False
+                "dados/patrimonio.csv",
+                index=False
                 )
 
                 st.success("REGISTO GUARDADO")
 
                 st.rerun()
 
-        # ---------- HISTÓRICO ----------
 
         if not df_patrimonio.empty:
 
@@ -184,8 +196,8 @@ if st.session_state.acesso:
                         df_patrimonio = df_patrimonio.drop(i)
 
                         df_patrimonio.to_csv(
-                            "dados/patrimonio.csv",
-                            index=False
+                        "dados/patrimonio.csv",
+                        index=False
                         )
 
                         st.rerun()
@@ -229,6 +241,8 @@ if st.session_state.acesso:
 
         if st.button("GUARDAR"):
 
+            global df_poupanca
+
             df_poupanca.loc[len(df_poupanca)] = [
                 mes,
                 salario,
@@ -238,8 +252,8 @@ if st.session_state.acesso:
             ]
 
             df_poupanca.to_csv(
-                "dados/poupanca.csv",
-                index=False
+            "dados/poupanca.csv",
+            index=False
             )
 
             st.success("GUARDADO")
@@ -253,15 +267,15 @@ if st.session_state.acesso:
             df_plot = df_poupanca.copy()
 
             df_plot["Poupança %"] = (
-                (df_plot["Salario"]
-                - df_plot["Despesas"]
-                - df_plot["Investimentos"]
-                - df_plot["Outros"])
-                / df_plot["Salario"]*100
+            (df_plot["Salario"]
+            - df_plot["Despesas"]
+            - df_plot["Investimentos"]
+            - df_plot["Outros"])
+            / df_plot["Salario"]*100
             )
 
             st.line_chart(
-                df_plot.set_index("Mês")["Poupança %"]
+            df_plot.set_index("Mês")["Poupança %"]
             )
 
 
@@ -273,85 +287,28 @@ if st.session_state.acesso:
 
         st.subheader("ANALISAR EMPRESA")
 
-        ticker = st.text_input(
-            "TICKER (ex: AAPL)"
-        ).upper()
+        ticker = st.text_input("TICKER (ex: AAPL)").upper()
 
         if ticker:
 
             try:
 
-                time.sleep(2)
+                time.sleep(1)
 
-                @st.cache_data
-                def get_stock(t):
+                stock = yf.Ticker(ticker)
 
-                    stock = yf.Ticker(t)
+                hist = stock.history(period="1d")
 
-                    return stock.info
+                preco = float(hist["Close"].iloc[-1])
 
-                info = get_stock(ticker)
-
-                preco = info.get(
-                    "regularMarketPrice",0
-                )
-
-                eps = info.get(
-                    "trailingEps",0
-                )
+                eps = stock.info.get("trailingEps",0)
 
                 valor_intrinseco = eps * 15 if eps else 0
 
-                revenue_growth = info.get("revenueGrowth",0)
-                net_income = info.get("netIncomeToCommon",0)
-                roic = info.get("returnOnEquity",0)*100
-                profit_margin = info.get("profitMargins",0)*100
-                cfo = info.get("operatingCashflow",0)
-                debt_ratio = info.get("debtToEquity",0)
-                ebitda = info.get("ebitda",1)
+                st.metric("PREÇO",f"${preco:.2f}")
 
-                criterios = {
-                "Crescimento Receita >7%": revenue_growth>0.07,
-                "Lucro positivo": net_income>0,
-                "ROIC >15%": roic>15,
-                "Margem >10%": profit_margin>10,
-                "CFO/NI >90%": net_income>0 and cfo/net_income>0.9,
-                "Divida baixa": ebitda>0 and debt_ratio<3,
-                "Intrinseco > preço": valor_intrinseco>preco
-                }
+                st.metric("VALOR INTRÍNSECO ESTIMADO",f"${valor_intrinseco:.2f}")
 
-                score = sum(criterios.values())
+            except:
 
-                col1,col2 = st.columns(2)
-
-                with col1:
-                    st.metric("PREÇO",f"${preco:.2f}")
-                    st.metric("VALOR INTRÍNSECO",f"${valor_intrinseco:.2f}")
-
-                with col2:
-                    st.metric("SCORE",f"{score}/7")
-
-                for k,v in criterios.items():
-
-                    cor = "green" if v else "red"
-
-                    st.markdown(
-                    f"{k} : <span style='color:{cor}'>{v}</span>",
-                    unsafe_allow_html=True
-                    )
-
-                df_investimentos.loc[len(df_investimentos)] = [
-                    ticker,
-                    valor_intrinseco,
-                    score,
-                    datetime.now()
-                ]
-
-                df_investimentos.to_csv(
-                    "dados/investimentos.csv",
-                    index=False
-                )
-
-            except Exception as e:
-
-                st.error(f"Erro ao buscar dados: {e}")
+                st.warning("Yahoo Finance limitou pedidos. Tente novamente em alguns segundos.")
