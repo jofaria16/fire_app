@@ -4,24 +4,26 @@ import os
 from datetime import datetime
 import yfinance as yf
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="FARIA | QUANT TERMINAL v6.1", page_icon="📈", layout="wide")
+# --- 1. CONFIGURAÇÃO ---
+st.set_page_config(page_title="FARIA | QUANT TERMINAL", page_icon="📈", layout="wide")
 
-# --- 2. STYLE (WALL STREET DARK & CLEAN) ---
+# --- 2. STYLE "THE BLACK BOX" ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0B0E14; color: #FFFFFF; }
-    .app-logo { text-align: center; padding: 15px 0; border-bottom: 1px solid #1E222D; margin-bottom: 20px; }
-    .logo-f { font-size: 30px; font-weight: 900; color: #FFFFFF; }
-    .logo-invest { font-size: 30px; font-weight: 200; color: #00D1FF; }
-    .metric-card { background-color: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; margin-bottom: 10px; }
-    .check-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2D3444; font-size: 15px; }
-    .status-box { padding: 20px; border-radius: 10px; text-align: center; font-weight: 800; font-size: 22px; margin-top: 20px; }
-    div.stButton > button { width: 100% !important; border-radius: 8px; background: linear-gradient(135deg, #0070FF 0%, #00A3FF 100%); color: white; font-weight: 800; height: 3.5em; border: none; }
+    .stApp { background-color: #05070A; color: #FFFFFF; font-family: 'JetBrains Mono', monospace; }
+    .app-logo { text-align: center; padding: 25px 0; border-bottom: 1px solid #1E222D; margin-bottom: 30px; }
+    .logo-f { font-size: 32px; font-weight: 900; color: #FFFFFF; }
+    .logo-invest { font-size: 32px; font-weight: 200; color: #00D1FF; }
+    .data-card { background-color: #0D1117; padding: 20px; border-radius: 10px; border: 1px solid #30363D; margin-bottom: 15px; }
+    .data-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #21262D; }
+    .data-label { color: #8B949E; font-size: 13px; }
+    .data-value { font-weight: 700; color: #F0F6FC; }
+    .veredito { padding: 20px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 24px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.1); }
+    div.stButton > button { width: 100% !important; background: #0070FF !important; color: white !important; font-weight: 800; border-radius: 4px; height: 3.5em; border: none; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LÓGICA DE DADOS (PERSISTÊNCIA) ---
+# --- 3. LÓGICA DE PERSISTÊNCIA ---
 if not os.path.exists("dados"): os.makedirs("dados")
 
 def load_data(name):
@@ -29,10 +31,8 @@ def load_data(name):
     if os.path.exists(path):
         df = pd.read_csv(path)
         if not df.empty and "Mês" in df.columns:
-            try:
-                df['dt_tmp'] = pd.to_datetime(df['Mês'], format='%b %y', errors='coerce')
-                df = df.sort_values(by='dt_tmp', ascending=False).drop(columns=['dt_tmp'])
-            except: pass
+            df['dt_tmp'] = pd.to_datetime(df['Mês'], format='%b %y', errors='coerce')
+            df = df.sort_values(by='dt_tmp', ascending=False).drop(columns=['dt_tmp'])
         return df
     return pd.DataFrame()
 
@@ -41,143 +41,131 @@ def get_month_options():
     y = datetime.now().year % 100
     return [f"{m} {y}" for m in months[::-1]] + [f"{m} {y-1}" for m in months[::-1]]
 
-# --- 4. MOTOR DCF PROFISSIONAL ---
-def dcf_valuation(fcf, growth, discount_rate, shares):
-    if fcf <= 0 or shares <= 0: return 0
-    terminal_growth = 0.025
-    cash_flows = []
-    for i in range(1, 6):
-        cf = fcf * (1 + growth) ** i
-        discounted_cf = cf / (1 + discount_rate) ** i
-        cash_flows.append(discounted_cf)
-    tv = (fcf * (1 + growth)**5 * (1 + terminal_growth)) / (discount_rate - terminal_growth)
-    discounted_tv = tv / (1 + discount_rate) ** 5
-    return (sum(cash_flows) + discounted_tv) / shares
+# --- 4. MOTOR DCF (ROBUSTO) ---
+def safe_dcf(ticker_info, growth_est):
+    try:
+        fcf = ticker_info.get('freeCashflow') or ticker_info.get('operatingCashflow', 0) * 0.8
+        shares = ticker_info.get('sharesOutstanding')
+        if not fcf or not shares or shares == 0: return 0
+        
+        r = 0.10 # Discount Rate (10%)
+        g = min(growth_est, 0.15) # Cap de crescimento conservador
+        tg = 0.02 # Terminal Growth (2%)
+        
+        # PV de 5 anos
+        pv_cfs = sum([(fcf * (1 + g)**i) / (1 + r)**i for i in range(1, 6)])
+        # Terminal Value
+        tv = (fcf * (1 + g)**5 * (1 + tg)) / (r - tg)
+        pv_tv = tv / (1 + r)**5
+        
+        return (pv_cfs + pv_tv) / shares
+    except: return 0
 
 # --- 5. LOGIN ---
 if 'acesso' not in st.session_state: st.session_state.acesso = False
 if not st.session_state.acesso:
-    st.markdown('<div class="app-logo"><span class="logo-f">F</span><span class="logo-invest">|INVEST</span></div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 6, 1])
+    st.markdown('<div class="app-logo"><span class="logo-f">F</span><span class="logo-invest">|QUANT</span></div>', unsafe_allow_html=True)
+    _, c2, _ = st.columns([1, 4, 1])
     with c2:
-        pwd = st.text_input("PASSWORD", type="password")
-        if st.button("LOGIN") or pwd == "1214":
+        pwd = st.text_input("ACCESS CODE", type="password")
+        if st.button("AUTHENTICATE") or pwd == "1214":
             if pwd == "1214": st.session_state.acesso = True; st.rerun()
     st.stop()
 
-# --- 6. INTERFACE PRINCIPAL ---
-st.markdown('<div class="app-logo"><span class="logo-f">F</span><span class="logo-invest">|INVEST</span></div>', unsafe_allow_html=True)
-menu = st.tabs(["🏛️ PORTFÓLIO", "💰 FLUXO", "🔬 ANALYTICS 6.1"])
+# --- 6. INTERFACE ---
+st.markdown('<div class="app-logo"><span class="logo-f">F</span><span class="logo-invest">|QUANT</span></div>', unsafe_allow_html=True)
+menu = st.tabs(["🏛️ ASSETS", "💰 FLOW", "🔬 QUANT ALGO V7"])
 
-# --- ABA 1: PORTFÓLIO ---
+# ABA ASSETS
 with menu[0]:
-    df_pat = load_data("patrimonio")
-    total_recente = df_pat["Total"].iloc[0] if not df_pat.empty else 0
-    st.markdown(f"<h1 style='text-align:center; color:#00FF85;'>{total_recente:,.2f} €</h1>", unsafe_allow_html=True)
-    
-    with st.expander("➕ REGISTAR VALORES"):
-        m_sel = st.selectbox("Mês de Referência", get_month_options(), key="p_month")
+    df_p = load_data("patrimonio")
+    val = df_p["Total"].iloc[0] if not df_p.empty else 0
+    st.markdown(f"<h1 style='text-align:center; color:#00FF85;'>{val:,.2f} €</h1>", unsafe_allow_html=True)
+    with st.expander("LOG NEW DATA"):
+        m = st.selectbox("Month", get_month_options(), key="p_m")
         c1, c2 = st.columns(2)
-        v1 = c1.number_input("Trading 212 (€)", min_value=0.0)
-        v2 = c2.number_input("IBKR (€)", min_value=0.0)
-        v3 = c1.number_input("Crypto (€)", min_value=0.0)
-        v4 = c2.number_input("PPR / Outros (€)", min_value=0.0)
-        if st.button("GUARDAR PATRIMÓNIO"):
-            total = v1 + v2 + v3 + v4
-            new_row = pd.DataFrame([{"Mês": m_sel, "T212": v1, "IBKR": v2, "CRY": v3, "PPR": v4, "Total": total}])
-            pd.concat([df_pat, new_row], ignore_index=True).to_csv("dados/patrimonio.csv", index=False)
-            st.rerun()
+        v1 = c1.number_input("T212", 0.0); v2 = c2.number_input("IBKR", 0.0)
+        v3 = c1.number_input("CRYPTO", 0.0); v4 = c2.number_input("OTHER", 0.0)
+        if st.button("SAVE ASSETS"):
+            new = pd.DataFrame([{"Mês": m, "T212": v1, "IBKR": v2, "CRY": v3, "PPR": v4, "Total": v1+v2+v3+v4}])
+            pd.concat([df_p, new], ignore_index=True).to_csv("dados/patrimonio.csv", index=False); st.rerun()
+    for i, r in df_p.iterrows():
+        st.markdown(f'<div class="data-card"><b>{r["Mês"]}</b>: {r["Total"]:,.2f} €</div>', unsafe_allow_html=True)
 
-    for idx, row in df_pat.iterrows():
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:800; font-size:18px;">{row['Mês']}</span>
-                <span style="color:#00FF85; font-weight:900; font-size:20px;">{row['Total']:,.2f} €</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(f"Eliminar {row['Mês']}", key=f"del_pat_{idx}"):
-            df_pat.drop(idx).to_csv("dados/patrimonio.csv", index=False)
-            st.rerun()
-
-# --- ABA 2: FLUXO ---
+# ABA FLOW
 with menu[1]:
-    df_flu = load_data("poupanca")
-    with st.expander("📝 REGISTAR CASHFLOW"):
-        m_flu = st.selectbox("Mês do Fluxo", get_month_options(), key="f_month")
-        s = st.number_input("Entradas (Salário/Outros)", min_value=0.0)
-        d = st.number_input("Saídas (Despesas)", min_value=0.0)
-        if st.button("GUARDAR FLUXO"):
-            new_f = pd.DataFrame([{"Mês": m_flu, "Entradas": s, "Saidas": d}])
-            pd.concat([df_flu, new_f], ignore_index=True).to_csv("dados/poupanca.csv", index=False)
-            st.rerun()
-    
-    for idx, row in df_flu.iterrows():
-        sobra = row['Entradas'] - row['Saidas']
-        st.markdown(f"""
-        <div class="metric-card">
-            <b>{row['Mês']}</b> | Entradas: {row['Entradas']:.2f}€ | Saídas: {row['Saidas']:.2f}€ | 
-            <span style="color:#00D1FF;">Sobra: {sobra:.2f}€</span>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(f"Remover Fluxo {row['Mês']}", key=f"del_flu_{idx}"):
-            df_flu.drop(idx).to_csv("dados/poupanca.csv", index=False)
-            st.rerun()
+    df_f = load_data("poupanca")
+    with st.expander("LOG MONTHLY FLOW"):
+        mf = st.selectbox("Month", get_month_options(), key="f_m")
+        e = st.number_input("Incomes", 0.0); s = st.number_input("Expenses", 0.0)
+        if st.button("SAVE FLOW"):
+            new = pd.DataFrame([{"Mês": mf, "Incomes": e, "Expenses": s}])
+            pd.concat([df_f, new], ignore_index=True).to_csv("dados/poupanca.csv", index=False); st.rerun()
+    for i, r in df_f.iterrows():
+        st.markdown(f'<div class="data-card">{r["Mês"]} | Net: {r["Incomes"]-r["Expenses"]:,.2f} €</div>', unsafe_allow_html=True)
 
-# --- ABA 3: ANALYTICS ---
+# ABA ANALYTICS (O CORAÇÃO)
 with menu[2]:
-    st.markdown("### 🔬 FARIA BUFFET 2.0 - ENGINE")
-    ticker_in = st.text_input("TICKER", placeholder="Ex: AAPL").upper()
+    ticker_in = st.text_input("SCAN TICKER", "").upper()
     if ticker_in:
         try:
-            with st.spinner("Analisando..."):
+            with st.spinner("Executing Algorithm..."):
                 stock = yf.Ticker(ticker_in)
                 inf = stock.info
-                # Métricas
-                current_p = inf.get('currentPrice', 1)
-                shares = inf.get('sharesOutstanding', 1)
+                
+                # Coleta de dados com fallback (evita o erro que tiveste)
+                price = inf.get('currentPrice', 0)
                 rev_g = inf.get('revenueGrowth', 0)
                 eps_g = inf.get('earningsGrowth', 0)
-                roic = inf.get('returnOnAssets', 0) * 2
                 margin = inf.get('profitMargins', 0)
+                roic = (inf.get('returnOnAssets') or 0) * 2
                 cfo = inf.get('operatingCashflow', 0)
-                ni = inf.get('netIncomeToCommon', 0)
+                ni = inf.get('netIncomeToCommon', 1)
                 debt_ebitda = inf.get('debtToEbitda', 0)
-                fcf = inf.get('freeCashflow', 0)
-
-                st.markdown(f"#### {inf.get('longName', ticker_in)}")
-                col1, col2 = st.columns(2)
+                
+                st.markdown(f"### {inf.get('longName', ticker_in)}")
+                
+                # Grid de Métricas
+                c1, c2 = st.columns(2)
                 score = 0
-                with col1:
-                    st.markdown("**1️⃣ CRESCIMENTO & MARGEM**")
-                    c1 = [("Receita > 7%", rev_g > 0.07, f"{rev_g*100:.1f}%"),
-                          ("Lucro Líquido > 9%", eps_g > 0.09, f"{eps_g*100:.1f}%"),
-                          ("Margem Líquida > 10%", margin > 0.10, f"{margin*100:.1f}%")]
-                    for l, p, v in c1:
+                
+                with c1:
+                    st.write("📊 **Growth & Margins**")
+                    m1 = [("Revenue > 7%", rev_g > 0.07, f"{rev_g*100:.1f}%"),
+                          ("Net Income > 9%", eps_g > 0.09, f"{eps_g*100:.1f}%"),
+                          ("Net Margin > 10%", margin > 0.10, f"{margin*100:.1f}%")]
+                    for l, p, v in m1:
                         score += 1 if p else 0
-                        st.markdown(f'<div class="check-item"><span>{l}</span><span>{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="data-row"><span class="data-label">{l}</span><span class="data-value">{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
+                
                 with col2:
-                    st.markdown("**2️⃣ RENTABILIDADE & DÍVIDA**")
-                    cf_r = (cfo/ni) if ni else 0
-                    c2 = [("ROIC > 15%", roic > 0.15, f"{roic*100:.1f}%"),
-                          ("CFO / Lucro > 90%", cf_r > 0.90, f"{cf_r*100:.1f}%"),
-                          ("Dívida/EBITDA < 3", 0 < debt_ebitda < 3, f"{debt_ebitda:.2f}")]
-                    for l, p, v in c2:
+                    st.write("💰 **Cash & Debt**")
+                    cfo_ni = cfo/ni if ni != 0 else 0
+                    m2 = [("ROIC > 15%", roic > 0.15, f"{roic*100:.1f}%"),
+                          ("CFO/NI > 90%", cfo_ni > 0.90, f"{cfo_ni*100:.1f}%"),
+                          ("Debt/EBITDA < 3", 0 < debt_ebitda < 3, f"{debt_ebitda:.2f}")]
+                    for l, p, v in m2:
                         score += 1 if p else 0
-                        st.markdown(f'<div class="check-item"><span>{l}</span><span>{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="data-row"><span class="data-label">{l}</span><span class="data-value">{v} {"✅" if p else "❌"}</span></div>', unsafe_allow_html=True)
 
-                growth_adj = min(rev_g, 0.15) if rev_g > 0 else 0.03
-                v_intrinsico = dcf_valuation(fcf, growth_adj, 0.10, shares)
-                upside = ((v_intrinsico / current_p) - 1) * 100 if current_p > 0 else 0
+                # Valuation DCF
+                intrinsic = safe_dcf(inf, rev_g)
+                upside = ((intrinsic / price) - 1) * 100 if price > 0 else 0
+                
+                # Veredito
+                status = "APPROVED" if score == 6 and upside > 15 else "WAITLIST" if score >= 4 else "REJECTED"
+                color = "#00FF85" if status == "APPROVED" else "#FFD700" if status == "WAITLIST" else "#FF5252"
+                
+                st.markdown(f'<div class="veredito" style="background:{color}; color:#05070A;">{status} ({score}/6)</div>', unsafe_allow_html=True)
+                
+                v1, v2, v3 = st.columns(3)
+                v1.metric("Market Price", f"{price:.2f}")
+                v2.metric("Intrinsic (DCF)", f"{intrinsic:.2f}")
+                v3.metric("Safety Margin", f"{upside:.1f}%", delta=f"{upside:.1f}%")
+                
+                st.latex(r"V_0 = \sum_{t=1}^{5} \frac{FCF_0(1+g)^t}{(1+r)^t} + \frac{TV}{(1+r)^5}")
 
-                st.markdown(f"### SCORE: {score}/6")
-                status = "APROVADA" if score == 6 and upside > 15 else "INCONCLUSIVA" if score >= 4 else "REJEITADA"
-                color = "#00FF85" if status == "APROVADA" else "#FFD700" if status == "INCONCLUSIVA" else "#FF5252"
-                st.markdown(f'<div class="status-box" style="background:{color}; color:#0B0E14;">{status}</div>', unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Erro na extração: {ticker_in} pode ter dados limitados no Yahoo Finance.")
 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Mercado", f"{current_p:.2f}")
-                c2.metric("Intrínseco (DCF)", f"{v_intrinsico:.2f}")
-                c3.metric("Margem", f"{upside:.1f}%", delta=f"{upside:.1f}%")
-        except: st.error("Erro nos dados.")
+st.markdown("<br><center style='color:#30363D; font-size:10px;'>QUANT TERMINAL V7 | EXCLUSIVE ACCESS</center>", unsafe_allow_html=True)
