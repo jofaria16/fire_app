@@ -92,12 +92,25 @@ div.stButton > button:hover { opacity:0.85 !important; }
 DATA_DIR = "dados"
 os.makedirs(DATA_DIR, exist_ok=True)
 
+PT_MONTHS = {"Jan":1,"Fev":2,"Mar":3,"Abr":4,"Mai":5,"Jun":6,
+             "Jul":7,"Ago":8,"Set":9,"Out":10,"Nov":11,"Dez":12}
+
+def parse_mes(m):
+    """Convert 'Abr 25' -> sortable int like 202504"""
+    try:
+        parts = str(m).strip().split()
+        mon = PT_MONTHS.get(parts[0], 0)
+        yr  = int(parts[1]) + 2000
+        return yr * 100 + mon
+    except Exception:
+        return 0
+
 def save_db(df, name):
     if "Mês" in df.columns and not df.empty:
         try:
             df = df.copy()
-            df["_dt"] = pd.to_datetime(df["Mês"], format="%b %y", errors="coerce")
-            df = df.sort_values("_dt", ascending=False).drop(columns=["_dt"])
+            df["_sort"] = df["Mês"].apply(parse_mes)
+            df = df.sort_values("_sort", ascending=False).drop(columns=["_sort"])
         except Exception:
             pass
     df.to_csv(f"{DATA_DIR}/{name}.csv", index=False)
@@ -110,9 +123,9 @@ def load_db(name):
     if df.empty or "Mês" not in df.columns:
         return df
     try:
-        df["_dt"] = pd.to_datetime(df["Mês"], format="%b %y", errors="coerce")
-        # sort descending: most recent first (iloc[0] = latest month)
-        df = df.sort_values("_dt", ascending=False).drop(columns=["_dt"])
+        df["_sort"] = df["Mês"].apply(parse_mes)
+        # descending: most recent first → iloc[0] = latest month (e.g. Mai)
+        df = df.sort_values("_sort", ascending=False).drop(columns=["_sort"])
     except Exception:
         pass
     return df.reset_index(drop=True)
@@ -357,8 +370,10 @@ with tab1:
     if len(df_p) >= 2:
         # df_p is sorted descending: iloc[0]=most recent, iloc[1]=previous
         tot    = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
-        latest = df_p.iloc[0]   # most recent month (e.g. Abril)
-        prev_r = df_p.iloc[1]   # previous month    (e.g. Março)
+        # iloc[0] = mais recente (Maio), iloc[1] = anterior (Abril)
+        # d = Maio - Abril = +400 se subiu
+        latest = df_p.iloc[0]
+        prev_r = df_p.iloc[1]
         st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
         perf_cols = st.columns(4)
         for idx, (cn, label, color) in enumerate([("T212","Trading 212","#00BFFF"),("IBKR","IBKR","#FFD060"),("CRY","Crypto","#FF8C42"),("PPR","PPR / Outros","#A78BFA")]):
