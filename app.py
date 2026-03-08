@@ -93,6 +93,13 @@ DATA_DIR = "dados"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 def save_db(df, name):
+    if "Mês" in df.columns and not df.empty:
+        try:
+            df = df.copy()
+            df["_dt"] = pd.to_datetime(df["Mês"], format="%b %y", errors="coerce")
+            df = df.sort_values("_dt", ascending=False).drop(columns=["_dt"])
+        except Exception:
+            pass
     df.to_csv(f"{DATA_DIR}/{name}.csv", index=False)
 
 def load_db(name):
@@ -104,6 +111,7 @@ def load_db(name):
         return df
     try:
         df["_dt"] = pd.to_datetime(df["Mês"], format="%b %y", errors="coerce")
+        # sort descending: most recent first (iloc[0] = latest month)
         df = df.sort_values("_dt", ascending=False).drop(columns=["_dt"])
     except Exception:
         pass
@@ -345,56 +353,19 @@ with tab1:
     if "edit_pat_idx" not in st.session_state:
         st.session_state.edit_pat_idx = None
 
-    # ── Chart ───────────────────────────────────────────────────────────
+    # ── Performance por Carteira ────────────────────────────────────────
     if len(df_p) >= 2:
-        try:
-            import plotly.graph_objects as go
-            df_chart = df_p.copy()
-            df_chart["_dt"] = pd.to_datetime(df_chart["Mês"], format="%b %y", errors="coerce")
-            df_chart = df_chart.sort_values("_dt").dropna(subset=["_dt"])
-
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=df_chart["Mês"], y=df_chart["Total"],
-                mode="lines+markers", name="Total",
-                line=dict(color="#00E87A", width=2.5),
-                marker=dict(size=7, color="#00E87A"),
-                fill="tozeroy", fillcolor="rgba(0,232,122,0.06)",
-                hovertemplate="<b>%{x}</b><br>%{y:,.0f} €<extra></extra>"
-            ))
-            for col_name, color in [("T212","#00BFFF"),("IBKR","#FFD060"),("CRY","#FF8C42"),("PPR","#A78BFA")]:
-                if col_name in df_chart.columns:
-                    fig.add_trace(go.Scatter(
-                        x=df_chart["Mês"], y=df_chart[col_name],
-                        mode="lines", name=col_name,
-                        line=dict(color=color, width=1.5, dash="dot"),
-                        hovertemplate=f"{col_name} %{{x}}: %{{y:,.0f}}€<extra></extra>"
-                    ))
-            fig.update_layout(
-                plot_bgcolor="#0D1219", paper_bgcolor="#0D1219",
-                font=dict(color="#8899BB", family="Space Mono"),
-                margin=dict(l=10,r=10,t=20,b=10),
-                legend=dict(bgcolor="#0D1219", bordercolor="#1E2A3E", borderwidth=1),
-                xaxis=dict(gridcolor="#111720", tickfont=dict(size=11)),
-                yaxis=dict(gridcolor="#111720", tickformat=",.0f", ticksuffix=" €", tickfont=dict(size=11)),
-                height=280
-            )
-            st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">EVOLUÇÃO DO PATRIMÓNIO</div>', unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            pass
-
-        # ── Performance por Carteira ────────────────────────────────────
+        # df_p is sorted descending: iloc[0]=most recent, iloc[1]=previous
         tot    = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
-        latest = df_p.iloc[0]
-        prev_r = df_p.iloc[1] if len(df_p) > 1 else latest
+        latest = df_p.iloc[0]   # most recent month (e.g. Abril)
+        prev_r = df_p.iloc[1]   # previous month    (e.g. Março)
         st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
         perf_cols = st.columns(4)
         for idx, (cn, label, color) in enumerate([("T212","Trading 212","#00BFFF"),("IBKR","IBKR","#FFD060"),("CRY","Crypto","#FF8C42"),("PPR","PPR / Outros","#A78BFA")]):
             if cn in df_p.columns:
-                cur = float(latest.get(cn, 0) or 0)
-                prv = float(prev_r.get(cn, 0) or 0)
-                d   = cur - prv
+                cur = float(latest.get(cn, 0) or 0)   # e.g. Abril
+                prv = float(prev_r.get(cn, 0) or 0)   # e.g. Março
+                d   = cur - prv                         # +320 se subiu
                 dp  = (d/prv*100) if prv > 0 else 0
                 s   = "+" if d >= 0 else ""
                 dc2 = "#00E87A" if d >= 0 else "#FF4D6A"
@@ -888,5 +859,4 @@ st.markdown("""
         FARIA QUANT TERMINAL · FOR PERSONAL USE ONLY
     </div>
 """, unsafe_allow_html=True)
-
 
