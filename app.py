@@ -14,7 +14,8 @@ if not os.path.exists("dados"):
 def load_csv(name, columns):
     path = f"dados/{name}.csv"
     if os.path.exists(path):
-        return pd.read_csv(path)
+        df = pd.read_csv(path)
+        return df
     df = pd.DataFrame(columns=columns)
     df.to_csv(path, index=False)
     return df
@@ -36,87 +37,102 @@ if not st.session_state.acesso:
         else:
             st.error("Código incorreto!")
 
-# --- Função para criar menu estilo card clicável ---
+# --- Menu state ---
+if 'menu' not in st.session_state:
+    st.session_state.menu = None
+
 def menu_card(name, key, color="#FF6F61"):
-    if key not in st.session_state:
-        st.session_state[key] = False
     clicked = st.button(name, key=f"btn_{key}")
     if clicked:
-        # Toggle
-        st.session_state[key] = not st.session_state[key]
-    return st.session_state[key]
+        st.session_state.menu = key
 
-# Inicializar session_state para inputs se não existirem
-inputs = ["t212", "ibkr", "crypto", "ppr", "mes", "salario", "despesas", "investimentos", "ticker"]
-for inp in inputs:
-    if inp not in st.session_state:
-        st.session_state[inp] = 0 if "t212" in inp or "ibkr" in inp or "crypto" in inp or "ppr" in inp or "salario" in inp or "despesas" in inp or "investimentos" in inp else ""
+# --- Inicializar session_state para inputs ---
+def init_numeric_state(key):
+    if key not in st.session_state:
+        st.session_state[key] = 0.0
+    else:
+        # garante que é float
+        try:
+            st.session_state[key] = float(st.session_state[key])
+        except:
+            st.session_state[key] = 0.0
 
-# --- Menu principal ---
+def init_string_state(key):
+    if key not in st.session_state:
+        st.session_state[key] = ""
+
+# Inicializar todos
+for k in ["t212", "ibkr", "crypto", "ppr", "salario", "despesas", "investimentos"]:
+    init_numeric_state(k)
+init_string_state("mes")
+init_string_state("ticker")
+
+# --- Menu ---
 if st.session_state.acesso:
     st.markdown("---")
 
-    show_patrimonio = menu_card("📊 Património", "patrimonio", "#1E90FF")
-    show_poupanca = menu_card("💵 Poupança", "poupanca", "#32CD32")
-    show_investimentos = menu_card("📈 Investimentos", "investimentos", "#FF6F61")
+    col_menu = st.columns([1,1,1])
+    with col_menu[0]:
+        menu_card("📊 Património", "patrimonio", "#1E90FF")
+    with col_menu[1]:
+        menu_card("💵 Poupança", "poupanca", "#32CD32")
+    with col_menu[2]:
+        menu_card("📈 Investimentos", "investimentos", "#FF6F61")
 
     # --- Património ---
-    if show_patrimonio:
+    if st.session_state.menu == "patrimonio":
         st.subheader("Adicionar os valores do seu portfolio")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.session_state.t212 = st.number_input("T212 (€)", min_value=0.0, value=st.session_state.t212, key="input_t212")
+            st.session_state.t212 = st.number_input("T212 (€)", min_value=0.0, value=st.session_state.t212, step=1.0, key="input_t212")
         with col2:
-            st.session_state.ibkr = st.number_input("IBKR (€)", min_value=0.0, value=st.session_state.ibkr, key="input_ibkr")
+            st.session_state.ibkr = st.number_input("IBKR (€)", min_value=0.0, value=st.session_state.ibkr, step=1.0, key="input_ibkr")
         with col3:
-            st.session_state.crypto = st.number_input("CRYPTO (€)", min_value=0.0, value=st.session_state.crypto, key="input_crypto")
+            st.session_state.crypto = st.number_input("CRYPTO (€)", min_value=0.0, value=st.session_state.crypto, step=1.0, key="input_crypto")
         with col4:
-            st.session_state.ppr = st.number_input("PPR (€)", min_value=0.0, value=st.session_state.ppr, key="input_ppr")
+            st.session_state.ppr = st.number_input("PPR (€)", min_value=0.0, value=st.session_state.ppr, step=1.0, key="input_ppr")
 
         total_portfolio = st.session_state.t212 + st.session_state.ibkr + st.session_state.crypto + st.session_state.ppr
         st.metric("TOTAL PORTFOLIO", f"€{total_portfolio:.2f}")
 
     # --- Poupança ---
-    if show_poupanca:
+    if st.session_state.menu == "poupanca":
         st.subheader("Registos de Poupança")
         with st.expander("ADICIONAR REGISTO", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.session_state.mes = st.text_input("MÊS", value=st.session_state.mes, key="input_mes")
             with col2:
-                st.session_state.salario = st.number_input("SALÁRIO (€)", min_value=0.0, value=st.session_state.salario, key="input_salario")
+                st.session_state.salario = st.number_input("SALÁRIO (€)", min_value=0.0, value=st.session_state.salario, step=1.0, key="input_salario")
             with col3:
-                st.session_state.despesas = st.number_input("DESPESAS (€)", min_value=0.0, value=st.session_state.despesas, key="input_despesas")
+                st.session_state.despesas = st.number_input("DESPESAS (€)", min_value=0.0, value=st.session_state.despesas, step=1.0, key="input_despesas")
             with col4:
-                st.session_state.investimentos = st.number_input("INVESTIMENTOS (€)", min_value=0.0, value=st.session_state.investimentos, key="input_investimentos")
+                st.session_state.investimentos = st.number_input("INVESTIMENTOS (€)", min_value=0.0, value=st.session_state.investimentos, step=1.0, key="input_investimentos")
             if st.button("ADICIONAR", key="add_poupanca"):
                 df_poupanca.loc[len(df_poupanca)] = [st.session_state.mes, st.session_state.salario, st.session_state.despesas, st.session_state.investimentos]
                 df_poupanca.to_csv("dados/poupanca.csv", index=False)
                 st.success("Registo adicionado!")
+                st.experimental_rerun()
 
         if not df_poupanca.empty:
             for i, row in df_poupanca.iterrows():
                 col1, col2, col3, col4, col5 = st.columns([2,2,2,2,1])
-                with col1:
-                    st.write(f"{row['Mês']}")
-                with col2:
-                    st.write(f"Salário: €{row['Salario']}")
-                with col3:
-                    st.write(f"Despesas: €{row['Despesas']}")
-                with col4:
-                    st.write(f"Investimentos: €{row['Investimentos']}")
+                with col1: st.write(f"{row['Mês']}")
+                with col2: st.write(f"Salário: €{row['Salario']}")
+                with col3: st.write(f"Despesas: €{row['Despesas']}")
+                with col4: st.write(f"Investimentos: €{row['Investimentos']}")
                 with col5:
                     if st.button(f"APAGAR {i}", key=f"del_{i}"):
                         df_poupanca = df_poupanca.drop(i).reset_index(drop=True)
                         df_poupanca.to_csv("dados/poupanca.csv", index=False)
                         st.experimental_rerun()
 
-        df_poupanca["Poupanca (%)"] = (df_poupanca["Salario"] - df_poupanca["Despesas"] - df_poupanca["Investimentos"]) / df_poupanca["Salario"] * 100 if not df_poupanca.empty else 0
         if not df_poupanca.empty:
+            df_poupanca["Poupanca (%)"] = (df_poupanca["Salario"] - df_poupanca["Despesas"] - df_poupanca["Investimentos"]) / df_poupanca["Salario"] * 100
             st.metric("Média Poupança", f"{df_poupanca['Poupanca (%)'].mean():.2f}%")
 
     # --- Investimentos ---
-    if show_investimentos:
+    if st.session_state.menu == "investimentos":
         st.subheader("Analisar Investimento")
         st.session_state.ticker = st.text_input("TICKER (ex: AAPL)", value=st.session_state.ticker, key="input_ticker").upper()
         if st.session_state.ticker:
