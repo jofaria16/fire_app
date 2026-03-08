@@ -45,9 +45,9 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 .badge { display:inline-block; background:#0D1219; border:1px solid #1E2A3E; padding:2px 10px; border-radius:20px; font-size:11px; color:#6070A0; margin-left:6px; }
 
-.stTabs [data-baseweb="tab-list"] { background:#0D1219; border-radius:8px; gap:4px; border:1px solid #151C28; }
-.stTabs [data-baseweb="tab"]      { color:#556080; font-size:13px; font-weight:600; padding:8px 16px; }
-.stTabs [aria-selected="true"]    { color:#00BFFF !important; background:#0D1219 !important; }
+.stTabs [data-baseweb="tab-list"] { background:transparent; border-radius:0; gap:0; border:none; border-bottom:1px solid #151C28; }
+.stTabs [data-baseweb="tab"]      { color:#556080; font-size:13px; font-weight:500; padding:10px 20px; border-radius:0; letter-spacing:0.5px; }
+.stTabs [aria-selected="true"]    { color:#FFFFFF !important; background:transparent !important; border-bottom:2px solid #00BFFF !important; }
 
 div.stButton > button {
     width:100% !important;
@@ -56,6 +56,24 @@ div.stButton > button {
     height:2.8em; font-family:'Space Mono',monospace; letter-spacing:1px; font-size:13px;
 }
 div.stButton > button:hover { opacity:0.85 !important; }
+
+/* Small icon buttons (edit/delete) */
+[data-testid="column"] div.stButton > button[kind="secondary"],
+[data-testid="column"] div.stButton > button {
+    background:transparent !important;
+    border:1px solid #1E2A3E !important;
+    color:#556080 !important;
+    font-size:14px !important;
+    height:2.2em !important;
+    border-radius:6px !important;
+    letter-spacing:0 !important;
+    font-family: inherit !important;
+}
+[data-testid="column"] div.stButton > button:hover {
+    border-color:#304060 !important;
+    color:#AABBDD !important;
+    opacity:1 !important;
+}
 
 .stTextInput input { background:#0D1219 !important; color:#DDE3EF !important; border:1px solid #1E2A3E !important; border-radius:6px !important; font-size:15px !important; }
 .stTextInput input:focus { border-color:#00BFFF !important; }
@@ -315,7 +333,7 @@ if not st.session_state.auth:
 # ─────────────────────────────────────────────
 st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">TERMINAL · PERSONAL EDITION</div></div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["🏛  PATRIMÓNIO", "💰  FLUXO DE CAIXA", "🎯  OBJETIVOS", "🔬  ANÁLISE DE AÇÕES"])
+tab1, tab2, tab3, tab4 = st.tabs(["PATRIMÓNIO", "FLUXO DE CAIXA", "OBJETIVOS", "ANÁLISE DE AÇÕES"])
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 1 — PATRIMÓNIO
@@ -323,21 +341,11 @@ tab1, tab2, tab3, tab4 = st.tabs(["🏛  PATRIMÓNIO", "💰  FLUXO DE CAIXA", "
 with tab1:
     df_p = load_db("patrimonio")
 
-    tot  = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
-    prev = float(df_p["Total"].iloc[1]) if len(df_p) > 1 else tot
-    dlt  = tot - prev
-    dpct = (dlt/prev*100) if prev > 0 else 0
-    sign = "+" if dlt >= 0 else ""
-    dc   = "#00E87A" if dlt >= 0 else "#FF4D6A"
+    # ── session state for inline edit ──────────────────────────────────
+    if "edit_pat_idx" not in st.session_state:
+        st.session_state.edit_pat_idx = None
 
-    st.markdown(f"""
-        <div style="text-align:center; padding:24px 0 18px;">
-            <div style="font-size:2.6em; font-weight:700; color:#00E87A; font-family:'Space Mono',monospace;">{tot:,.2f} <span style="font-size:0.5em; color:#304060;">EUR</span></div>
-            <div style="font-size:14px; color:{dc}; margin-top:6px; font-family:'Space Mono',monospace;">{sign}{dlt:,.0f} € ({sign}{dpct:.1f}%) vs mês anterior</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # ── Evolução Chart ──────────────────────────────────────────────────
+    # ── Chart ───────────────────────────────────────────────────────────
     if len(df_p) >= 2:
         try:
             import plotly.graph_objects as go
@@ -369,17 +377,18 @@ with tab1:
                 legend=dict(bgcolor="#0D1219", bordercolor="#1E2A3E", borderwidth=1),
                 xaxis=dict(gridcolor="#111720", tickfont=dict(size=11)),
                 yaxis=dict(gridcolor="#111720", tickformat=",.0f", ticksuffix=" €", tickfont=dict(size=11)),
-                height=300
+                height=280
             )
-            st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">📊 EVOLUÇÃO DO PATRIMÓNIO</div>', unsafe_allow_html=True)
+            st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">EVOLUÇÃO DO PATRIMÓNIO</div>', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True)
         except Exception:
             pass
 
         # ── Performance por Carteira ────────────────────────────────────
-        st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">📈 PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
+        tot    = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
         latest = df_p.iloc[0]
         prev_r = df_p.iloc[1] if len(df_p) > 1 else latest
+        st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
         perf_cols = st.columns(4)
         for idx, (cn, label, color) in enumerate([("T212","Trading 212","#00BFFF"),("IBKR","IBKR","#FFD060"),("CRY","Crypto","#FF8C42"),("PPR","PPR / Outros","#A78BFA")]):
             if cn in df_p.columns:
@@ -401,7 +410,8 @@ with tab1:
                     """, unsafe_allow_html=True)
 
     # ── Add Record ──────────────────────────────────────────────────────
-    with st.expander("➕  Adicionar Registo"):
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.expander("Adicionar Registo"):
         m     = st.selectbox("Mês", get_months(), key="m_pat")
         c1,c2 = st.columns(2)
         v1 = c1.number_input("Trading 212 (€)", min_value=0.0, format="%.2f", key="v1")
@@ -412,28 +422,64 @@ with tab1:
             row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":v1+v2+v3+v4}])
             save_db(pd.concat([df_p, row], ignore_index=True), "patrimonio")
             st.cache_data.clear()
-            st.success("✅  Gravado.")
+            st.success("Gravado.")
             st.rerun()
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    # ── History with edit + delete ───────────────────────────────────────
+    st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">HISTÓRICO</div>', unsafe_allow_html=True)
+
     for i, r in df_p.iterrows():
-        c_card, c_del = st.columns([11,1])
-        with c_card:
-            bk = f'T212: {r.get("T212",0):,.0f}€ · IBKR: {r.get("IBKR",0):,.0f}€ · Crypto: {r.get("CRY",0):,.0f}€ · PPR: {r.get("PPR",0):,.0f}€'
+        is_editing = st.session_state.edit_pat_idx == i
+
+        if is_editing:
+            # ── EDIT MODE ─────────────────────────────────────────────
             st.markdown(f"""
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
-                        <span class="green" style="font-family:'Space Mono',monospace; font-size:1.1em; font-weight:700;">{r["Total"]:,.2f} €</span>
-                    </div>
-                    <div style="font-size:11px; color:#304060; margin-top:6px;">{bk}</div>
+                <div style="background:#0D1219; border:1px solid #00BFFF44; border-radius:10px; padding:16px 20px; margin-bottom:4px;">
+                    <div style="font-size:10px; color:#00BFFF; letter-spacing:3px; margin-bottom:12px; font-family:'Space Mono',monospace;">A EDITAR — {r["Mês"]}</div>
                 </div>
             """, unsafe_allow_html=True)
-        with c_del:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🗑", key=f"dp_{i}"):
-                save_db(df_p.drop(i).reset_index(drop=True), "patrimonio")
+            ec1, ec2 = st.columns(2)
+            e1 = ec1.number_input("Trading 212 (€)", value=float(r.get("T212",0) or 0), format="%.2f", key=f"e1_{i}")
+            e2 = ec2.number_input("IBKR (€)",         value=float(r.get("IBKR",0) or 0), format="%.2f", key=f"e2_{i}")
+            e3 = ec1.number_input("Crypto (€)",        value=float(r.get("CRY",0)  or 0), format="%.2f", key=f"e3_{i}")
+            e4 = ec2.number_input("Outros / PPR (€)",  value=float(r.get("PPR",0)  or 0), format="%.2f", key=f"e4_{i}")
+            sb1, sb2 = st.columns(2)
+            if sb1.button("Guardar", key=f"esave_{i}"):
+                df_p.at[i,"T212"]  = e1
+                df_p.at[i,"IBKR"]  = e2
+                df_p.at[i,"CRY"]   = e3
+                df_p.at[i,"PPR"]   = e4
+                df_p.at[i,"Total"] = e1+e2+e3+e4
+                save_db(df_p, "patrimonio")
+                st.session_state.edit_pat_idx = None
                 st.rerun()
+            if sb2.button("Cancelar", key=f"ecancel_{i}"):
+                st.session_state.edit_pat_idx = None
+                st.rerun()
+        else:
+            # ── VIEW MODE ─────────────────────────────────────────────
+            bk = f'T212: {float(r.get("T212",0) or 0):,.0f}€ · IBKR: {float(r.get("IBKR",0) or 0):,.0f}€ · Crypto: {float(r.get("CRY",0) or 0):,.0f}€ · PPR: {float(r.get("PPR",0) or 0):,.0f}€'
+            c_card, c_edit, c_del = st.columns([10, 1, 1])
+            with c_card:
+                st.markdown(f"""
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
+                            <span class="green" style="font-family:'Space Mono',monospace; font-size:1.1em; font-weight:700;">{float(r["Total"]):,.2f} €</span>
+                        </div>
+                        <div style="font-size:11px; color:#304060; margin-top:6px;">{bk}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_edit:
+                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                if st.button("✏️", key=f"edit_{i}", help="Editar"):
+                    st.session_state.edit_pat_idx = i
+                    st.rerun()
+            with c_del:
+                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                if st.button("🗑", key=f"dp_{i}", help="Apagar"):
+                    save_db(df_p.drop(i).reset_index(drop=True), "patrimonio")
+                    st.rerun()
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 2 — FLUXO DE CAIXA
@@ -479,7 +525,7 @@ with tab2:
     # ── Categoria Breakdown ──────────────────────────────────────────────
     if not df_desp.empty and "Categoria" in df_desp.columns:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="sec-title" style="padding-left:4px;">💸 DESPESAS POR CATEGORIA (ACUMULADO)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec-title" style="padding-left:4px;">DESPESAS POR CATEGORIA (ACUMULADO)</div>', unsafe_allow_html=True)
         cat_totals  = df_desp[df_desp["Categoria"] != "_total_"].groupby("Categoria")["Saidas"].sum().sort_values(ascending=False)
         total_saidas = cat_totals.sum()
         if total_saidas > 0:
@@ -499,7 +545,7 @@ with tab2:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Add Record ──────────────────────────────────────────────────────
-    with st.expander("➕  Registar Mês"):
+    with st.expander("Registar Mês"):
         mf  = st.selectbox("Mês", get_months(), key="m_flx")
         sal = st.number_input("Salário / Total Entradas (€)", min_value=0.0, format="%.2f", key="sal")
 
@@ -593,7 +639,7 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("➕  Definir Novo Objetivo"):
+    with st.expander("Definir Novo Objetivo"):
         o_nome = st.text_input("Nome do Objetivo", placeholder="ex: 100K Club, Casa, Reforma Antecipada...")
         oc1,oc2 = st.columns(2)
         o_meta = oc1.number_input("Meta (€)", min_value=0.0, format="%.0f")
@@ -769,7 +815,7 @@ with tab4:
                 st.markdown(html, unsafe_allow_html=True)
 
             # All metrics
-            with st.expander("📊  Todas as Métricas"):
+            with st.expander("Todas as Métricas"):
                 def fmtB(v): return f"${float(v)/1e9:.2f}B" if v else "N/A"
                 def fmtP(v): return f"{float(v)*100:.1f}%" if v else "N/A"
                 def fmtX(v): return f"{float(v):.2f}x" if v else "N/A"
@@ -842,3 +888,5 @@ st.markdown("""
         FARIA QUANT TERMINAL · FOR PERSONAL USE ONLY
     </div>
 """, unsafe_allow_html=True)
+
+
