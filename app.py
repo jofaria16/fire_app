@@ -5,643 +5,840 @@ from datetime import datetime
 import yfinance as yf
 import numpy as np
 
-# --- 1. PAGE CONFIG ---
-st.set_page_config(page_title="FARIA | QUANT TERMINAL v9.0", page_icon="📈", layout="wide")
+# ─────────────────────────────────────────────
+# PAGE CONFIG
+# ─────────────────────────────────────────────
+st.set_page_config(
+    page_title="FARIA | QUANT TERMINAL",
+    page_icon="📈",
+    layout="wide"
+)
 
-# --- 2. CSS ---
+# ─────────────────────────────────────────────
+# CSS
+# ─────────────────────────────────────────────
 st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600;800&display=swap');
-    
-    .stApp { background-color: #05070A; color: #E8EAF0; font-family: 'DM Sans', sans-serif; }
-    
-    .main-header { text-align: center; padding: 24px 0 16px; border-bottom: 1px solid #1A1F2E; margin-bottom: 28px; }
-    .logo-f  { font-size: 28px; font-weight: 800; color: #FFFFFF; font-family: 'Space Mono', monospace; letter-spacing: -1px; }
-    .logo-q  { font-size: 28px; font-weight: 400; color: #00C8FF; font-family: 'Space Mono', monospace; }
-    .logo-v  { font-size: 11px; color: #404860; letter-spacing: 4px; margin-top: 4px; }
-    
-    .metric-card { background: #0B0E14; padding: 16px 20px; border-radius: 10px; border: 1px solid #1A1F2E; margin-bottom: 12px; transition: border-color 0.2s; }
-    .metric-card:hover { border-color: #2A3048; }
-    .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #12161F; font-size: 13px; }
-    .metric-row:last-child { border-bottom: none; }
-    
-    .verdict-bar { padding: 14px 20px; border-radius: 8px; text-align: center; font-weight: 800; font-size: 18px; margin: 16px 0; letter-spacing: 2px; font-family: 'Space Mono', monospace; }
-    
-    .sector-badge { display: inline-block; background: #12161F; border: 1px solid #252B3B; padding: 3px 10px; border-radius: 20px; font-size: 11px; color: #7888AA; margin-left: 8px; text-transform: uppercase; letter-spacing: 1px; }
-    
-    .dcf-box { background: #0B0E14; border: 1px solid #1A2535; border-radius: 10px; padding: 16px 20px; margin-top: 12px; }
-    .dcf-title { font-size: 11px; color: #4A5570; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; font-family: 'Space Mono', monospace; }
-    .dcf-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #8898BB; }
-    .dcf-row span:last-child { color: #C8D8F8; font-family: 'Space Mono', monospace; }
-    
-    div.stButton > button { 
-        width: 100% !important; 
-        background: linear-gradient(90deg, #0050CC, #0090FF) !important; 
-        color: white !important; font-weight: 700; border-radius: 6px; border: none; height: 2.8em;
-        font-family: 'Space Mono', monospace; letter-spacing: 1px;
-        transition: opacity 0.2s;
-    }
-    div.stButton > button:hover { opacity: 0.85; }
-    
-    .stTextInput input, .stNumberInput input, .stSelectbox select { 
-        background-color: #0B0E14 !important; color: #E8EAF0 !important; 
-        border: 1px solid #252B3B !important; border-radius: 6px !important;
-        font-family: 'DM Sans', sans-serif !important;
-    }
-    .stTabs [data-baseweb="tab-list"] { background: #0B0E14; border-radius: 8px; border: 1px solid #1A1F2E; }
-    .stTabs [data-baseweb="tab"] { color: #606880; font-weight: 600; }
-    .stTabs [aria-selected="true"] { color: #00C8FF !important; }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
-    /* Remove default streamlit padding */
-    .block-container { padding-top: 1rem; }
-    </style>
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+.stApp { background-color: #080B10; color: #DDE3EF; }
+.block-container { padding-top: 1.5rem; max-width: 1200px; }
+
+.fq-header { text-align:center; padding:20px 0 14px; border-bottom:1px solid #151C28; margin-bottom:24px; }
+.fq-logo-f { font-family:'Space Mono',monospace; font-size:26px; font-weight:700; color:#FFFFFF; }
+.fq-logo-q { font-family:'Space Mono',monospace; font-size:26px; font-weight:400; color:#00BFFF; }
+.fq-sub    { font-size:10px; color:#2E3A50; letter-spacing:5px; margin-top:4px; font-family:'Space Mono',monospace; }
+
+.card { background:#0D1219; border:1px solid #151C28; border-radius:10px; padding:18px 20px; margin-bottom:12px; }
+.card:hover { border-color:#1E2A3E; }
+
+.mrow { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #111720; font-size:13.5px; }
+.mrow:last-child { border-bottom:none; }
+.mrow .label { color:#8899BB; }
+.mrow .val   { font-family:'Space Mono',monospace; font-size:13px; }
+.green { color:#00E87A; } .red { color:#FF4D6A; } .gold { color:#FFD060; } .blue { color:#00BFFF; }
+
+.sec-title { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:#304060; font-family:'Space Mono',monospace; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #111720; }
+
+.verdict { padding:16px 24px; border-radius:8px; text-align:center; font-weight:700; font-size:17px; font-family:'Space Mono',monospace; letter-spacing:3px; margin:18px 0; }
+
+.badge { display:inline-block; background:#0D1219; border:1px solid #1E2A3E; padding:2px 10px; border-radius:20px; font-size:11px; color:#6070A0; margin-left:6px; }
+
+.stTabs [data-baseweb="tab-list"] { background:#0D1219; border-radius:8px; gap:4px; border:1px solid #151C28; }
+.stTabs [data-baseweb="tab"]      { color:#556080; font-size:13px; font-weight:600; padding:8px 16px; }
+.stTabs [aria-selected="true"]    { color:#00BFFF !important; background:#0D1219 !important; }
+
+div.stButton > button {
+    width:100% !important;
+    background:linear-gradient(90deg,#004ECC,#0088FF) !important;
+    color:white !important; font-weight:700; border-radius:6px; border:none;
+    height:2.8em; font-family:'Space Mono',monospace; letter-spacing:1px; font-size:13px;
+}
+div.stButton > button:hover { opacity:0.85 !important; }
+
+.stTextInput input { background:#0D1219 !important; color:#DDE3EF !important; border:1px solid #1E2A3E !important; border-radius:6px !important; font-size:15px !important; }
+.stTextInput input:focus { border-color:#00BFFF !important; }
+.stNumberInput input { background:#0D1219 !important; color:#DDE3EF !important; border:1px solid #1E2A3E !important; }
+.stSelectbox > div > div { background:#0D1219 !important; border:1px solid #1E2A3E !important; color:#DDE3EF !important; }
+.streamlit-expanderHeader { background:#0D1219 !important; border:1px solid #151C28 !important; border-radius:8px !important; }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:#1E2A3E; border-radius:4px; }
+</style>
 """, unsafe_allow_html=True)
 
-# --- 3. DATABASE ---
-if not os.path.exists("dados"):
-    os.makedirs("dados")
+# ─────────────────────────────────────────────
+# DATABASE
+# ─────────────────────────────────────────────
+DATA_DIR = "dados"
+os.makedirs(DATA_DIR, exist_ok=True)
 
 def save_db(df, name):
-    df.to_csv(f"dados/{name}.csv", index=False)
+    df.to_csv(f"{DATA_DIR}/{name}.csv", index=False)
 
 def load_db(name):
-    path = f"dados/{name}.csv"
-    if os.path.exists(path):
-        df = pd.read_csv(path)
-        if not df.empty and "Mês" in df.columns:
-            try:
-                df['tmp_dt'] = pd.to_datetime(df['Mês'], format='%b %y', errors='coerce')
-                df = df.sort_values('tmp_dt', ascending=False).drop(columns=['tmp_dt'])
-            except:
-                pass
+    path = f"{DATA_DIR}/{name}.csv"
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    df = pd.read_csv(path)
+    if df.empty or "Mês" not in df.columns:
         return df
-    return pd.DataFrame()
+    try:
+        df["_dt"] = pd.to_datetime(df["Mês"], format="%b %y", errors="coerce")
+        df = df.sort_values("_dt", ascending=False).drop(columns=["_dt"])
+    except Exception:
+        pass
+    return df.reset_index(drop=True)
 
 def get_months():
-    m_names = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-    curr_y = datetime.now().year % 100
-    return [f"{m} {curr_y}" for m in m_names[::-1]] + [f"{m} {curr_y-1}" for m in m_names[::-1]]
+    names = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+    y = datetime.now().year % 100
+    return [f"{m} {y}" for m in reversed(names)] + [f"{m} {y-1}" for m in reversed(names)]
 
-# --- 4. SECTOR DETECTION ---
-SECTOR_CONFIG = {
-    "Technology": {
-        "method": "dcf",
-        "discount_rate": 0.10,
-        "terminal_growth": 0.03,
-        "growth_cap": 0.25,
-        "label": "DCF (High-Growth Tech)",
-        "color": "#00C8FF"
-    },
-    "Communication Services": {
-        "method": "dcf",
-        "discount_rate": 0.10,
-        "terminal_growth": 0.025,
-        "growth_cap": 0.20,
-        "label": "DCF (Media/Comms)",
-        "color": "#00C8FF"
-    },
-    "Consumer Cyclical": {
-        "method": "ev_ebitda",
-        "target_multiple": 14,
-        "label": "EV/EBITDA (Consumer)",
-        "color": "#FFB347"
-    },
-    "Consumer Defensive": {
-        "method": "pe_relative",
-        "fair_pe": 22,
-        "label": "P/E Relativo (Defensivo)",
-        "color": "#98FF98"
-    },
-    "Healthcare": {
-        "method": "dcf",
-        "discount_rate": 0.09,
-        "terminal_growth": 0.025,
-        "growth_cap": 0.18,
-        "label": "DCF (Healthcare)",
-        "color": "#FF9ECD"
-    },
-    "Financial Services": {
-        "method": "pb_roe",
-        "label": "P/B + ROE (Financeiras)",
-        "color": "#FFD700"
-    },
-    "Industrials": {
-        "method": "ev_ebitda",
-        "target_multiple": 11,
-        "label": "EV/EBITDA (Industriais)",
-        "color": "#B0C4DE"
-    },
-    "Basic Materials": {
-        "method": "ev_ebitda",
-        "target_multiple": 8,
-        "label": "EV/EBITDA (Materiais)",
-        "color": "#DEB887"
-    },
-    "Energy": {
-        "method": "ev_ebitda",
-        "target_multiple": 7,
-        "label": "EV/EBITDA (Energia)",
-        "color": "#FFA07A"
-    },
-    "Real Estate": {
-        "method": "nav",
-        "label": "NAV/FFO (REIT)",
-        "color": "#9370DB"
-    },
-    "Utilities": {
-        "method": "ddm",
-        "label": "DDM (Utilities/Dividendo)",
-        "color": "#7EC8E3"
-    },
-    "default": {
-        "method": "dcf",
-        "discount_rate": 0.10,
-        "terminal_growth": 0.025,
-        "growth_cap": 0.15,
-        "label": "DCF (Geral)",
-        "color": "#A0A8C0"
-    }
+DESPESA_CATS = ["Habitação","Alimentação","Transportes","Saúde","Lazer","Subscrições","Educação","Outros"]
+CAT_COLORS   = {
+    "Habitação":"#00BFFF","Alimentação":"#00E87A","Transportes":"#FFD060",
+    "Saúde":"#FF9ECD","Lazer":"#FF8C42","Subscrições":"#A78BFA",
+    "Educação":"#34D399","Outros":"#8899BB"
 }
 
-# --- 5. INTRINSIC VALUE ENGINE (SECTOR-ADJUSTED) ---
-def get_sector_config(sector):
-    return SECTOR_CONFIG.get(sector, SECTOR_CONFIG["default"])
-
-def safe_get(d, *keys, default=0):
-    """Try multiple keys, return first non-None/non-zero value"""
-    for key in keys:
-        val = d.get(key)
-        if val is not None and val != 0 and not (isinstance(val, float) and np.isnan(val)):
-            return val
+# ─────────────────────────────────────────────
+# SAFE GETTER
+# ─────────────────────────────────────────────
+def sg(d, *keys, default=0):
+    for k in keys:
+        v = d.get(k)
+        if v is not None and v != "" and not (isinstance(v, float) and np.isnan(v)):
+            try:
+                f = float(v)
+                if f != 0:
+                    return f
+            except Exception:
+                return v
     return default
 
-def calculate_intrinsic_value(info, sector):
-    cfg = get_sector_config(sector)
-    method = cfg["method"]
-    shares = safe_get(info, 'sharesOutstanding', default=1)
-    price = safe_get(info, 'currentPrice', 'previousClose', default=1)
-
-    result = {
-        "method_label": cfg["label"],
-        "color": cfg["color"],
-        "value": 0,
-        "components": {}
-    }
-
+# ─────────────────────────────────────────────
+# TICKER FETCH  (root fix for yfinance ≥0.2)
+# ─────────────────────────────────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_info(symbol: str):
     try:
-        # ── DCF (Technology, Healthcare, Comms) ──────────────────────────────
-        if method == "dcf":
-            dr  = cfg.get("discount_rate", 0.10)
-            tg  = cfg.get("terminal_growth", 0.025)
-            cap = cfg.get("growth_cap", 0.15)
+        t    = yf.Ticker(symbol)
+        info = t.info or {}
 
-            # FCF: try freeCashflow first, then operating - capex
-            fcf = safe_get(info, 'freeCashflow', default=0)
-            if fcf <= 0:
-                ocf  = safe_get(info, 'operatingCashflow', default=0)
-                capx = abs(safe_get(info, 'capitalExpenditures', default=0))
-                fcf  = ocf - capx
+        # fast_info is more reliable for price
+        try:
+            fi    = t.fast_info
+            price = (
+                getattr(fi, "last_price", None) or
+                getattr(fi, "regular_market_price", None) or
+                info.get("currentPrice") or
+                info.get("regularMarketPrice") or
+                info.get("previousClose")
+            )
+            if price:
+                info["currentPrice"] = float(price)
+        except Exception:
+            pass
 
-            if fcf <= 0:
-                # last resort: use net income as proxy
-                fcf = safe_get(info, 'netIncomeToCommon', default=0)
+        # last resort: pull from history
+        if not info.get("currentPrice"):
+            hist = t.history(period="5d")
+            if not hist.empty:
+                info["currentPrice"] = float(hist["Close"].iloc[-1])
 
-            if fcf <= 0 or shares <= 0:
-                return result
+        price = info.get("currentPrice", 0)
+        name  = info.get("longName") or info.get("shortName") or ""
 
-            rev_g = safe_get(info, 'revenueGrowth', default=0.05)
-            eps_g = safe_get(info, 'earningsGrowth', default=0.05)
-            g = min(max((rev_g + eps_g) / 2, 0.03), cap)
+        if price == 0 and not name:
+            return None, f"Ticker **{symbol}** não encontrado ou sem dados disponíveis."
+        if not name:
+            info["longName"] = symbol
 
-            pv_cfs = sum([(fcf * (1 + g)**i) / (1 + dr)**i for i in range(1, 6)])
-            fcf_5  = fcf * (1 + g)**5
-            tv     = (fcf_5 * (1 + tg)) / (dr - tg)
-            pv_tv  = tv / (1 + dr)**5
-
-            iv = (pv_cfs + pv_tv) / shares
-            result["value"] = iv
-            result["components"] = {
-                "FCF Base": f"${fcf/1e9:.2f}B",
-                "Taxa Crescimento": f"{g*100:.1f}%",
-                "Taxa Desconto": f"{dr*100:.0f}%",
-                "Terminal Growth": f"{tg*100:.1f}%",
-                "PV Fluxos (5a)": f"${pv_cfs/1e9:.1f}B",
-                "PV Terminal": f"${pv_tv/1e9:.1f}B"
-            }
-
-        # ── EV/EBITDA (Consumer, Industrial, Energy, Materials) ──────────────
-        elif method == "ev_ebitda":
-            ebitda = safe_get(info, 'ebitda', default=0)
-            debt   = safe_get(info, 'totalDebt', default=0)
-            cash   = safe_get(info, 'totalCash', 'cashAndCashEquivalents', default=0)
-            target = cfg.get("target_multiple", 12)
-
-            if ebitda <= 0 or shares <= 0:
-                return result
-
-            ev_implied = ebitda * target
-            equity     = ev_implied - debt + cash
-            iv         = equity / shares
-
-            result["value"] = iv
-            result["components"] = {
-                "EBITDA": f"${ebitda/1e9:.2f}B",
-                "Múltiplo Alvo": f"{target}x",
-                "EV Implícito": f"${ev_implied/1e9:.1f}B",
-                "Dívida Líquida": f"${(debt-cash)/1e9:.1f}B"
-            }
-
-        # ── P/E Relativo (Consumer Defensive) ────────────────────────────────
-        elif method == "pe_relative":
-            eps       = safe_get(info, 'trailingEps', 'forwardEps', default=0)
-            fair_pe   = cfg.get("fair_pe", 20)
-            # adjust fair PE for growth
-            rev_g     = safe_get(info, 'revenueGrowth', default=0.05)
-            adj_pe    = fair_pe * (1 + rev_g)
-
-            if eps <= 0:
-                return result
-
-            iv = eps * adj_pe
-            result["value"] = iv
-            result["components"] = {
-                "EPS (TTM)": f"${eps:.2f}",
-                "P/E Justo": f"{fair_pe}x",
-                "Ajuste Crescimento": f"+{rev_g*100:.1f}%",
-                "P/E Ajustado": f"{adj_pe:.1f}x"
-            }
-
-        # ── P/B + ROE (Financeiras) ───────────────────────────────────────────
-        elif method == "pb_roe":
-            roe   = safe_get(info, 'returnOnEquity', default=0.10)
-            bvps  = safe_get(info, 'bookValue', default=0)
-            dr    = 0.10
-            # Graham formula for banks: fair P/B = ROE / cost of equity
-            fair_pb = max(roe / dr, 0.5)
-            iv      = bvps * fair_pb
-
-            result["value"] = iv
-            result["components"] = {
-                "Book Value/Share": f"${bvps:.2f}",
-                "ROE": f"{roe*100:.1f}%",
-                "Custo Capital": "10%",
-                "P/B Justo": f"{fair_pb:.2f}x"
-            }
-
-        # ── DDM (Utilities) ───────────────────────────────────────────────────
-        elif method == "ddm":
-            div_rate  = safe_get(info, 'dividendRate', default=0)
-            div_yield = safe_get(info, 'dividendYield', default=0)
-            dr        = 0.07
-            g         = 0.025  # utilities grow slowly
-
-            if div_rate <= 0:
-                # estimate from yield
-                div_rate = price * div_yield if div_yield > 0 else 0
-
-            if div_rate <= 0:
-                return result
-
-            # Gordon Growth Model: P = D1 / (r - g)
-            d1 = div_rate * (1 + g)
-            iv = d1 / (dr - g)
-            result["value"] = iv
-            result["components"] = {
-                "Dividendo Anual": f"${div_rate:.2f}",
-                "Taxa Crescimento Div": f"{g*100:.1f}%",
-                "Taxa Desconto": f"{dr*100:.0f}%",
-                "D1": f"${d1:.2f}"
-            }
-
-        # ── NAV/FFO (REIT) ────────────────────────────────────────────────────
-        elif method == "nav":
-            # Use P/FFO proxy (FFO ≈ net income + depreciation for REITs)
-            ni    = safe_get(info, 'netIncomeToCommon', default=0)
-            dep   = safe_get(info, 'totalAssets', default=0) * 0.02  # rough depreciation
-            ffo   = ni + dep
-            if ffo <= 0 or shares <= 0:
-                return result
-
-            ffo_per_share = ffo / shares
-            fair_p_ffo    = 16  # typical REIT fair multiple
-            iv            = ffo_per_share * fair_p_ffo
-            result["value"] = iv
-            result["components"] = {
-                "FFO Estimado": f"${ffo/1e6:.0f}M",
-                "FFO/Share": f"${ffo_per_share:.2f}",
-                "P/FFO Justo": "16x"
-            }
+        return info, None
 
     except Exception as e:
-        result["components"]["Erro"] = str(e)
+        msg = str(e)
+        if "404" in msg or "No data" in msg.lower():
+            return None, f"Ticker **{symbol}** inválido."
+        return None, f"Erro ao carregar {symbol}: {msg}"
 
+# ─────────────────────────────────────────────
+# INTRINSIC VALUE ENGINE (sector-adjusted)
+# ─────────────────────────────────────────────
+SECTOR_CFG = {
+    "Technology":             {"method":"dcf",      "dr":0.10,"tg":0.03, "cap":0.25,"label":"DCF — Free Cash Flow"},
+    "Communication Services": {"method":"dcf",      "dr":0.10,"tg":0.025,"cap":0.20,"label":"DCF — Free Cash Flow"},
+    "Healthcare":             {"method":"dcf",      "dr":0.09,"tg":0.025,"cap":0.18,"label":"DCF — Free Cash Flow"},
+    "Consumer Cyclical":      {"method":"ev_ebitda","multiple":14,              "label":"EV / EBITDA"},
+    "Consumer Defensive":     {"method":"pe_rel",   "base_pe":22,               "label":"P/E Relativo"},
+    "Financial Services":     {"method":"pb_roe",                               "label":"P/B + ROE (Graham)"},
+    "Industrials":            {"method":"ev_ebitda","multiple":11,              "label":"EV / EBITDA"},
+    "Basic Materials":        {"method":"ev_ebitda","multiple":8,               "label":"EV / EBITDA"},
+    "Energy":                 {"method":"ev_ebitda","multiple":7,               "label":"EV / EBITDA"},
+    "Utilities":              {"method":"ddm",                                  "label":"Gordon Growth (DDM)"},
+    "Real Estate":            {"method":"ffo",                                  "label":"P / FFO (REIT)"},
+}
+
+def intrinsic_value(info, sector):
+    cfg    = SECTOR_CFG.get(sector, {"method":"dcf","dr":0.10,"tg":0.025,"cap":0.15,"label":"DCF — Geral"})
+    method = cfg["method"]
+    shares = sg(info, "sharesOutstanding", default=1)
+    result = {"iv":0, "label":cfg["label"], "rows":[]}
+    R      = result["rows"]
+    try:
+        if method == "dcf":
+            dr, tg, cap = cfg.get("dr",0.10), cfg.get("tg",0.025), cfg.get("cap",0.15)
+            fcf = sg(info,"freeCashflow",default=0)
+            if fcf <= 0:
+                fcf = sg(info,"operatingCashflow",default=0) - abs(sg(info,"capitalExpenditures",default=0))
+            if fcf <= 0:
+                fcf = sg(info,"netIncomeToCommon",default=0)
+            if fcf <= 0 or shares <= 0: return result
+            g  = min(max((sg(info,"revenueGrowth",default=0.05) + sg(info,"earningsGrowth",default=0.05))/2, 0.03), cap)
+            pv = sum([(fcf*(1+g)**i)/(1+dr)**i for i in range(1,6)])
+            tv = (fcf*(1+g)**5*(1+tg))/(dr-tg)
+            result["iv"] = max((pv + tv/(1+dr)**5)/shares, 0)
+            R += [("FCF Base",f"${fcf/1e9:.2f}B"),("Taxa Crescimento",f"{g*100:.1f}%"),
+                  ("Taxa Desconto",f"{dr*100:.0f}%"),("Terminal Growth",f"{tg*100:.1f}%")]
+
+        elif method == "ev_ebitda":
+            ebitda = sg(info,"ebitda",default=0)
+            if ebitda <= 0 or shares <= 0: return result
+            mult   = cfg.get("multiple",12)
+            equity = ebitda*mult - sg(info,"totalDebt",default=0) + sg(info,"totalCash",default=0)
+            result["iv"] = max(equity/shares, 0)
+            R += [("EBITDA",f"${ebitda/1e9:.2f}B"),("Múltiplo Setor",f"{mult}x")]
+
+        elif method == "pe_rel":
+            eps = sg(info,"trailingEps","forwardEps",default=0)
+            if eps <= 0: return result
+            adj_pe = cfg.get("base_pe",20) * (1 + sg(info,"revenueGrowth",default=0.04))
+            result["iv"] = max(eps*adj_pe, 0)
+            R += [("EPS TTM",f"${eps:.2f}"),("P/E Ajustado",f"{adj_pe:.1f}x")]
+
+        elif method == "pb_roe":
+            roe  = sg(info,"returnOnEquity",default=0.10)
+            bvps = sg(info,"bookValue",default=0)
+            if bvps <= 0: return result
+            fair = max(roe/0.10, 0.5)
+            result["iv"] = max(bvps*fair, 0)
+            R += [("Book Value/Share",f"${bvps:.2f}"),("ROE",f"{roe*100:.1f}%"),("P/B Justo",f"{fair:.2f}x")]
+
+        elif method == "ddm":
+            div = sg(info,"dividendRate",default=0)
+            if div <= 0: return result
+            result["iv"] = max((div*1.025)/(0.07-0.025), 0)
+            R += [("Dividendo Anual",f"${div:.2f}"),("r=7%, g=2.5%","Gordon Growth")]
+
+        elif method == "ffo":
+            ni  = sg(info,"netIncomeToCommon",default=0)
+            ffo = ni + sg(info,"totalAssets",default=0)*0.02
+            if ffo <= 0 or shares <= 0: return result
+            result["iv"] = max(ffo/shares*16, 0)
+            R += [("FFO/Share",f"${ffo/shares:.2f}"),("P/FFO Justo","16x")]
+
+    except Exception as e:
+        R.append(("Erro", str(e)))
     return result
 
-# --- 6. SAFE TICKER FETCH ---
-def fetch_ticker_data(ticker_symbol):
-    """Robust ticker data fetch with multiple fallbacks"""
-    try:
-        stock = yf.Ticker(ticker_symbol)
-        
-        # Force a real data fetch — .info can be lazy
-        info = stock.info
-        
-        # Validate we actually got data (not just empty dict)
-        if not info or len(info) < 5:
-            return None, None, "Dados insuficientes retornados pelo Yahoo Finance."
-        
-        # Check essential fields exist
-        name = info.get('longName') or info.get('shortName') or info.get('symbol')
-        if not name:
-            return None, None, f"Ticker '{ticker_symbol}' não reconhecido."
-        
-        # Try to get current price with multiple fallbacks
-        price = (info.get('currentPrice') or 
-                 info.get('regularMarketPrice') or 
-                 info.get('previousClose') or 
-                 info.get('navPrice') or 0)
-        
-        if price == 0:
-            # Try getting price from history
-            hist = stock.history(period="2d")
-            if not hist.empty:
-                price = float(hist['Close'].iloc[-1])
-                info['currentPrice'] = price
+# ─────────────────────────────────────────────
+# CHECKLIST + VERDICT ENGINE
+# ─────────────────────────────────────────────
+def run_checklist(info, iv, price):
+    rev_g   = sg(info,"revenueGrowth",default=0)
+    eps_g   = sg(info,"earningsGrowth",default=0)
+    margin  = sg(info,"profitMargins",default=0)
+    gross_m = sg(info,"grossMargins",default=0)
+    roe     = sg(info,"returnOnEquity",default=0)
+    roa     = sg(info,"returnOnAssets",default=0)
+    cfo     = sg(info,"operatingCashflow",default=0)
+    ni      = sg(info,"netIncomeToCommon",default=1)
+    debt_eq = sg(info,"debtToEquity",default=0)
+    cr      = sg(info,"currentRatio",default=0)
+    pe      = sg(info,"trailingPE",default=0)
+    peg     = sg(info,"pegRatio",default=0)
+    beta    = sg(info,"beta",default=1)
+    upside  = ((iv/price)-1)*100 if price > 0 and iv > 0 else 0
+    cfo_ni  = cfo/ni if ni != 0 else 0
 
-        if price == 0:
-            return None, None, f"Não foi possível obter cotação para '{ticker_symbol}'."
-        
-        return stock, info, None
+    checks = [
+        ("Crescimento",   "Receita YoY > 7%",       rev_g > 0.07,       f"{rev_g*100:.1f}%"),
+        ("Crescimento",   "Lucro YoY > 9%",          eps_g > 0.09,       f"{eps_g*100:.1f}%"),
+        ("Rentabilidade", "Margem Líquida > 10%",    margin > 0.10,      f"{margin*100:.1f}%"),
+        ("Rentabilidade", "Margem Bruta > 40%",      gross_m > 0.40,     f"{gross_m*100:.1f}%"),
+        ("Rentabilidade", "ROE > 15%",               roe > 0.15,         f"{roe*100:.1f}%"),
+        ("Rentabilidade", "ROA > 5%",                roa > 0.05,         f"{roa*100:.1f}%"),
+        ("Qualidade",     "CFO / Net Income > 80%",  cfo_ni > 0.80,      f"{cfo_ni*100:.1f}%"),
+        ("Qualidade",     "Dívida/Equity < 1.5",     0 < debt_eq < 150,  f"{debt_eq/100:.2f}x" if debt_eq>1 else f"{debt_eq:.2f}x"),
+        ("Qualidade",     "Current Ratio > 1.2",     cr > 1.2,           f"{cr:.2f}x"),
+        ("Valuation",     "P/E < 30",                0 < pe < 30,        f"{pe:.1f}x" if pe>0 else "N/A"),
+        ("Valuation",     "PEG < 1.5",               0 < peg < 1.5,      f"{peg:.2f}" if peg>0 else "N/A"),
+        ("Valuation",     "Upside DCF > 15%",        upside > 15,        f"{upside:+.1f}%" if iv>0 else "N/A"),
+        ("Risco",         "Beta < 1.5",              beta < 1.5,         f"{beta:.2f}"),
+    ]
+    score = sum(1 for _,_,p,_ in checks if p)
+    n     = len(checks)
+    qs    = sum(1 for c,_,p,_ in checks if c in ("Rentabilidade","Qualidade") and p)
+    vs    = sum(1 for c,_,p,_ in checks if c == "Valuation" and p)
 
-    except Exception as e:
-        err_str = str(e).lower()
-        if "404" in err_str or "no data" in err_str:
-            return None, None, f"Ticker '{ticker_symbol}' não encontrado no Yahoo Finance."
-        return None, None, f"Erro ao carregar dados: {str(e)}"
+    if score >= 10 and vs >= 2:
+        return checks,score,n,"APROVADA","#00E87A","#00E87A18","#00E87A44","Empresa de alta qualidade com valuation atrativo. Candidata a investimento."
+    elif score >= 7 and qs >= 3:
+        return checks,score,n,"INDECISA","#FFD060","#FFD06018","#FFD06044","Boas fundações mas alguns critérios não satisfeitos. Monitorizar."
+    else:
+        return checks,score,n,"REJEITADA","#FF4D6A","#FF4D6A18","#FF4D6A44","Não cumpre os critérios mínimos de qualidade ou valuation. Evitar."
 
-# --- 7. AUTH ---
-if 'auth' not in st.session_state:
+# ─────────────────────────────────────────────
+# AUTH
+# ─────────────────────────────────────────────
+if "auth" not in st.session_state:
     st.session_state.auth = False
 
 if not st.session_state.auth:
-    st.markdown('<div class="main-header"><span class="logo-f">F</span><span class="logo-q">|QUANT</span><div class="logo-v">TERMINAL v9.0</div></div>', unsafe_allow_html=True)
-    _, col, _ = st.columns([1, 2, 1])
+    st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">TERMINAL · PERSONAL EDITION</div></div>', unsafe_allow_html=True)
+    _, col, _ = st.columns([1,1.2,1])
     with col:
         st.markdown("<br>", unsafe_allow_html=True)
-        pwd = st.text_input("ACCESS KEY", type="password", placeholder="••••")
-        if st.button("UNLOCK"):
-            if pwd == "1214":
+        key = st.text_input("ACCESS KEY", type="password", placeholder="••••••")
+        if st.button("UNLOCK →"):
+            if key == "1214":
                 st.session_state.auth = True
                 st.rerun()
             else:
                 st.error("Chave incorreta.")
     st.stop()
 
-# --- 8. MAIN INTERFACE ---
-st.markdown('<div class="main-header"><span class="logo-f">F</span><span class="logo-q">|QUANT</span><div class="logo-v">TERMINAL v9.0</div></div>', unsafe_allow_html=True)
+# ─────────────────────────────────────────────
+# MAIN HEADER
+# ─────────────────────────────────────────────
+st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">TERMINAL · PERSONAL EDITION</div></div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(["🏛️  PATRIMÓNIO", "💰  FLUXO", "🔬  ANALYTICS"])
+tab1, tab2, tab3, tab4 = st.tabs(["🏛  PATRIMÓNIO", "💰  FLUXO DE CAIXA", "🎯  OBJETIVOS", "🔬  ANÁLISE DE AÇÕES"])
 
-# ════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
 # TAB 1 — PATRIMÓNIO
-# ════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
 with tab1:
     df_p = load_db("patrimonio")
-    
-    total_recente = df_p["Total"].iloc[0] if not df_p.empty else 0
-    total_anterior = df_p["Total"].iloc[1] if len(df_p) > 1 else total_recente
-    delta = total_recente - total_anterior
-    delta_pct = (delta / total_anterior * 100) if total_anterior > 0 else 0
-    delta_sign = "+" if delta >= 0 else ""
-    delta_color = "#00FF85" if delta >= 0 else "#FF5252"
-    
-    col_total, col_delta = st.columns([3, 1])
-    with col_total:
-        st.markdown(f"<h1 style='text-align:center; color:#00FF85; font-family:Space Mono,monospace; font-size:2.8em; margin:0;'>{total_recente:,.2f} €</h1>", unsafe_allow_html=True)
-    with col_delta:
-        st.markdown(f"<div style='text-align:center; color:{delta_color}; font-family:Space Mono,monospace; font-size:1.1em; padding-top:18px;'>{delta_sign}{delta:,.0f}€<br><small>{delta_sign}{delta_pct:.1f}%</small></div>", unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    with st.expander("➕  ADICIONAR REGISTO"):
-        m = st.selectbox("Mês", get_months(), key="m1")
-        c1, c2 = st.columns(2)
-        v1 = c1.number_input("Trading 212 (€)", min_value=0.0, format="%.2f")
-        v2 = c2.number_input("IBKR (€)", min_value=0.0, format="%.2f")
-        v3 = c1.number_input("Crypto (€)", min_value=0.0, format="%.2f")
-        v4 = c2.number_input("Outros / PPR (€)", min_value=0.0, format="%.2f")
+
+    tot  = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
+    prev = float(df_p["Total"].iloc[1]) if len(df_p) > 1 else tot
+    dlt  = tot - prev
+    dpct = (dlt/prev*100) if prev > 0 else 0
+    sign = "+" if dlt >= 0 else ""
+    dc   = "#00E87A" if dlt >= 0 else "#FF4D6A"
+
+    st.markdown(f"""
+        <div style="text-align:center; padding:24px 0 18px;">
+            <div style="font-size:2.6em; font-weight:700; color:#00E87A; font-family:'Space Mono',monospace;">{tot:,.2f} <span style="font-size:0.5em; color:#304060;">EUR</span></div>
+            <div style="font-size:14px; color:{dc}; margin-top:6px; font-family:'Space Mono',monospace;">{sign}{dlt:,.0f} € ({sign}{dpct:.1f}%) vs mês anterior</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ── Evolução Chart ──────────────────────────────────────────────────
+    if len(df_p) >= 2:
+        try:
+            import plotly.graph_objects as go
+            df_chart = df_p.copy()
+            df_chart["_dt"] = pd.to_datetime(df_chart["Mês"], format="%b %y", errors="coerce")
+            df_chart = df_chart.sort_values("_dt").dropna(subset=["_dt"])
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=df_chart["Mês"], y=df_chart["Total"],
+                mode="lines+markers", name="Total",
+                line=dict(color="#00E87A", width=2.5),
+                marker=dict(size=7, color="#00E87A"),
+                fill="tozeroy", fillcolor="rgba(0,232,122,0.06)",
+                hovertemplate="<b>%{x}</b><br>%{y:,.0f} €<extra></extra>"
+            ))
+            for col_name, color in [("T212","#00BFFF"),("IBKR","#FFD060"),("CRY","#FF8C42"),("PPR","#A78BFA")]:
+                if col_name in df_chart.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df_chart["Mês"], y=df_chart[col_name],
+                        mode="lines", name=col_name,
+                        line=dict(color=color, width=1.5, dash="dot"),
+                        hovertemplate=f"{col_name} %{{x}}: %{{y:,.0f}}€<extra></extra>"
+                    ))
+            fig.update_layout(
+                plot_bgcolor="#0D1219", paper_bgcolor="#0D1219",
+                font=dict(color="#8899BB", family="Space Mono"),
+                margin=dict(l=10,r=10,t=20,b=10),
+                legend=dict(bgcolor="#0D1219", bordercolor="#1E2A3E", borderwidth=1),
+                xaxis=dict(gridcolor="#111720", tickfont=dict(size=11)),
+                yaxis=dict(gridcolor="#111720", tickformat=",.0f", ticksuffix=" €", tickfont=dict(size=11)),
+                height=300
+            )
+            st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">📊 EVOLUÇÃO DO PATRIMÓNIO</div>', unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception:
+            pass
+
+        # ── Performance por Carteira ────────────────────────────────────
+        st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">📈 PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
+        latest = df_p.iloc[0]
+        prev_r = df_p.iloc[1] if len(df_p) > 1 else latest
+        perf_cols = st.columns(4)
+        for idx, (cn, label, color) in enumerate([("T212","Trading 212","#00BFFF"),("IBKR","IBKR","#FFD060"),("CRY","Crypto","#FF8C42"),("PPR","PPR / Outros","#A78BFA")]):
+            if cn in df_p.columns:
+                cur = float(latest.get(cn, 0) or 0)
+                prv = float(prev_r.get(cn, 0) or 0)
+                d   = cur - prv
+                dp  = (d/prv*100) if prv > 0 else 0
+                s   = "+" if d >= 0 else ""
+                dc2 = "#00E87A" if d >= 0 else "#FF4D6A"
+                pct = (cur/tot*100) if tot > 0 else 0
+                with perf_cols[idx]:
+                    st.markdown(f"""
+                        <div class="card" style="text-align:center; border-top:3px solid {color}; padding:14px 12px;">
+                            <div style="font-size:10px; color:#556080; letter-spacing:2px; margin-bottom:8px;">{label.upper()}</div>
+                            <div style="font-size:1.25em; font-weight:700; font-family:'Space Mono',monospace; color:{color};">{cur:,.0f}€</div>
+                            <div style="font-size:12px; color:{dc2}; margin-top:4px;">{s}{d:,.0f}€ ({s}{dp:.1f}%)</div>
+                            <div style="font-size:11px; color:#304060; margin-top:4px;">{pct:.1f}% do total</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+    # ── Add Record ──────────────────────────────────────────────────────
+    with st.expander("➕  Adicionar Registo"):
+        m     = st.selectbox("Mês", get_months(), key="m_pat")
+        c1,c2 = st.columns(2)
+        v1 = c1.number_input("Trading 212 (€)", min_value=0.0, format="%.2f", key="v1")
+        v2 = c2.number_input("IBKR (€)",         min_value=0.0, format="%.2f", key="v2")
+        v3 = c1.number_input("Crypto (€)",        min_value=0.0, format="%.2f", key="v3")
+        v4 = c2.number_input("Outros / PPR (€)",  min_value=0.0, format="%.2f", key="v4")
         if st.button("GRAVAR PATRIMÓNIO"):
-            new_row = pd.DataFrame([{"Mês": m, "T212": v1, "IBKR": v2, "CRY": v3, "PPR": v4, "Total": v1+v2+v3+v4}])
-            save_db(pd.concat([df_p, new_row], ignore_index=True), "patrimonio")
-            st.success("Gravado!")
+            row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":v1+v2+v3+v4}])
+            save_db(pd.concat([df_p, row], ignore_index=True), "patrimonio")
+            st.cache_data.clear()
+            st.success("✅  Gravado.")
             st.rerun()
-    
+
+    st.markdown("<br>", unsafe_allow_html=True)
     for i, r in df_p.iterrows():
-        cols = st.columns([4, 1])
-        with cols[0]:
-            breakdown = f'T212: {r.get("T212",0):,.0f}€ &nbsp;|&nbsp; IBKR: {r.get("IBKR",0):,.0f}€ &nbsp;|&nbsp; CRY: {r.get("CRY",0):,.0f}€ &nbsp;|&nbsp; PPR: {r.get("PPR",0):,.0f}€'
-            st.markdown(f'''<div class="metric-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-family:Space Mono,monospace;">{r["Mês"]}</b>
-                    <span style="color:#00FF85; font-size:1.2em; font-weight:700; font-family:Space Mono,monospace;">{r["Total"]:,.2f} €</span>
+        c_card, c_del = st.columns([11,1])
+        with c_card:
+            bk = f'T212: {r.get("T212",0):,.0f}€ · IBKR: {r.get("IBKR",0):,.0f}€ · Crypto: {r.get("CRY",0):,.0f}€ · PPR: {r.get("PPR",0):,.0f}€'
+            st.markdown(f"""
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
+                        <span class="green" style="font-family:'Space Mono',monospace; font-size:1.1em; font-weight:700;">{r["Total"]:,.2f} €</span>
+                    </div>
+                    <div style="font-size:11px; color:#304060; margin-top:6px;">{bk}</div>
                 </div>
-                <div style="font-size:11px; color:#606880; margin-top:6px;">{breakdown}</div>
-            </div>''', unsafe_allow_html=True)
-        with cols[1]:
-            if st.button("🗑", key=f"delp_{i}"):
+            """, unsafe_allow_html=True)
+        with c_del:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑", key=f"dp_{i}"):
                 save_db(df_p.drop(i).reset_index(drop=True), "patrimonio")
                 st.rerun()
 
-# ════════════════════════════════════════════════════════
-# TAB 2 — FLUXO
-# ════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
+# TAB 2 — FLUXO DE CAIXA
+# ══════════════════════════════════════════════════════════════════
 with tab2:
-    df_f = load_db("poupanca")
-    
-    if not df_f.empty:
-        total_ent = df_f["Entradas"].sum()
-        total_sai = df_f["Saidas"].sum()
-        total_net = total_ent - total_sai
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Entradas", f"{total_ent:,.0f} €")
-        c2.metric("Total Saídas", f"{total_sai:,.0f} €")
-        c3.metric("Total Poupado", f"{total_net:,.0f} €", delta=f"{(total_net/total_ent*100):.1f}% taxa" if total_ent > 0 else "")
+    df_f    = load_db("poupanca")
+    df_desp = load_db("despesas")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    with st.expander("➕  REGISTAR ENTRADAS/SAÍDAS"):
-        mf  = st.selectbox("Mês", get_months(), key="m2")
-        ent = st.number_input("Entradas (Salário, etc.) €", min_value=0.0, format="%.2f")
-        sai = st.number_input("Saídas (Despesas, etc.) €", min_value=0.0, format="%.2f")
-        if st.button("GRAVAR FLUXO"):
-            new_f = pd.DataFrame([{"Mês": mf, "Entradas": ent, "Saidas": sai}])
-            save_db(pd.concat([df_f, new_f], ignore_index=True), "poupanca")
-            st.success("Gravado!")
-            st.rerun()
+    # ── Summary ─────────────────────────────────────────────────────────
+    if not df_f.empty and "Entradas" in df_f.columns:
+        te = float(df_f["Entradas"].sum())
+        ts = float(df_f["Saidas"].sum()) if "Saidas" in df_f.columns else 0
+        tn = te - ts
+        avg_monthly = tn / len(df_f) if len(df_f) > 0 else 0
+        months_left = 12 - datetime.now().month
+        proj_extra  = avg_monthly * months_left
 
-    for i, r in df_f.iterrows():
-        net = r['Entradas'] - r['Saidas']
-        taxa = (net / r['Entradas'] * 100) if r['Entradas'] > 0 else 0
-        net_color = "#00FF85" if net >= 0 else "#FF5252"
-        cols = st.columns([4, 1])
-        with cols[0]:
-            st.markdown(f'''<div class="metric-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-family:Space Mono,monospace;">{r["Mês"]}</b>
-                    <span style="color:{net_color}; font-weight:700; font-family:Space Mono,monospace;">+{net:,.2f} €</span>
-                </div>
-                <div style="font-size:11px; color:#606880; margin-top:6px;">
-                    Entradas: {r["Entradas"]:,.0f}€ &nbsp;|&nbsp; Saídas: {r["Saidas"]:,.0f}€ &nbsp;|&nbsp; Taxa Poupança: {taxa:.1f}%
-                </div>
-            </div>''', unsafe_allow_html=True)
-        with cols[1]:
-            if st.button("🗑", key=f"delf_{i}"):
-                save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
-                st.rerun()
+        c1,c2,c3,c4 = st.columns(4)
+        c1.metric("Total Entradas",   f"{te:,.0f} €")
+        c2.metric("Total Saídas",     f"{ts:,.0f} €")
+        c3.metric("Total Poupado",    f"{tn:,.0f} €", delta=f"{tn/te*100:.1f}% taxa" if te>0 else "")
+        c4.metric("Projeção Fim Ano", f"+{proj_extra:,.0f} €", delta=f"{months_left} meses restantes")
 
-# ════════════════════════════════════════════════════════
-# TAB 3 — ANALYTICS v9
-# ════════════════════════════════════════════════════════
-with tab3:
-    col_input, col_btn = st.columns([5, 1])
-    with col_input:
-        ticker_in = st.text_input("", placeholder="SCAN TICKER  (ex: AAPL · GOOGL · NVDA · EDP.LS)", label_visibility="collapsed").strip().upper()
-    with col_btn:
-        scan_btn = st.button("SCAN")
-
-    if ticker_in and scan_btn or (ticker_in and 'last_ticker' in st.session_state and st.session_state.last_ticker == ticker_in):
-        st.session_state.last_ticker = ticker_in
-        
-        with st.spinner(f"Fetching {ticker_in}..."):
-            stock, info, error = fetch_ticker_data(ticker_in)
-
-        if error:
-            st.error(f"❌  {error}")
-        else:
-            sector   = info.get('sector', 'default') or 'default'
-            industry = info.get('industry', '')
-            name     = info.get('longName') or info.get('shortName', ticker_in)
-            price    = safe_get(info, 'currentPrice', 'regularMarketPrice', 'previousClose', default=1)
-            currency = info.get('currency', 'USD')
-            exchange = info.get('exchange', '')
-            
-            # Header
+        # Taxa média de poupança
+        if te > 0:
+            taxa_m = tn/te*100
+            bc     = "#00E87A" if taxa_m >= 20 else "#FFD060" if taxa_m >= 10 else "#FF4D6A"
+            bw     = min(int(taxa_m), 100)
+            tip    = "🟢 Excelente! Acima de 20%" if taxa_m >= 20 else "🟡 Razoável. Tenta chegar a 20%" if taxa_m >= 10 else "🔴 Abaixo do ideal. Objetivo: 10%+"
             st.markdown(f"""
-                <div style="margin-bottom:16px;">
-                    <span style="font-size:1.5em; font-weight:800;">{name}</span>
-                    <span class="sector-badge">{sector}</span>
-                    <span class="sector-badge">{industry[:30] if industry else ''}</span>
-                    <div style="font-size:12px; color:#505870; margin-top:4px; font-family:Space Mono,monospace;">{ticker_in} · {exchange} · {currency}</div>
+                <div class="card" style="margin-top:16px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:12px; color:#8899BB; letter-spacing:1px;">TAXA DE POUPANÇA MÉDIA</span>
+                        <span style="font-family:'Space Mono',monospace; color:{bc}; font-weight:700;">{taxa_m:.1f}%</span>
+                    </div>
+                    <div style="background:#111720; border-radius:20px; height:8px;">
+                        <div style="width:{bw}%; height:8px; border-radius:20px; background:{bc};"></div>
+                    </div>
+                    <div style="font-size:11px; color:#304060; margin-top:8px;">{tip}</div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # Key metrics
-            rev_g     = safe_get(info, 'revenueGrowth', default=0)
-            eps_g     = safe_get(info, 'earningsGrowth', default=0)
-            margin    = safe_get(info, 'profitMargins', default=0)
-            roe       = safe_get(info, 'returnOnEquity', default=0)
-            cfo       = safe_get(info, 'operatingCashflow', default=0)
-            ni        = safe_get(info, 'netIncomeToCommon', default=1)
-            debt_ebit = safe_get(info, 'debtToEbitda', default=0)
-            beta      = safe_get(info, 'beta', default=1.0)
-            pe_ttm    = safe_get(info, 'trailingPE', default=0)
-            pe_fwd    = safe_get(info, 'forwardPE', default=0)
-            ev_ebitda = safe_get(info, 'enterpriseToEbitda', default=0)
+    # ── Categoria Breakdown ──────────────────────────────────────────────
+    if not df_desp.empty and "Categoria" in df_desp.columns:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="sec-title" style="padding-left:4px;">💸 DESPESAS POR CATEGORIA (ACUMULADO)</div>', unsafe_allow_html=True)
+        cat_totals  = df_desp[df_desp["Categoria"] != "_total_"].groupby("Categoria")["Saidas"].sum().sort_values(ascending=False)
+        total_saidas = cat_totals.sum()
+        if total_saidas > 0:
+            cat_cols = st.columns(min(len(cat_totals), 4))
+            for idx, (cat, val) in enumerate(cat_totals.items()):
+                color = CAT_COLORS.get(cat, "#8899BB")
+                pct   = (val/total_saidas*100)
+                with cat_cols[idx % 4]:
+                    st.markdown(f"""
+                        <div class="card" style="text-align:center; border-top:2px solid {color}; padding:12px 16px;">
+                            <div style="font-size:10px; color:#556080; letter-spacing:2px;">{cat.upper()}</div>
+                            <div style="font-size:1.1em; font-weight:700; font-family:'Space Mono',monospace; color:{color}; margin-top:6px;">{val:,.0f}€</div>
+                            <div style="font-size:11px; color:#304060; margin-top:3px;">{pct:.1f}%</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            # ── CHECKLIST ──
-            col_l, col_r = st.columns(2)
-            score = 0
+    st.markdown("<br>", unsafe_allow_html=True)
 
-            with col_l:
-                st.markdown('<div class="dcf-box"><div class="dcf-title">📈 Crescimento & Rentabilidade</div>', unsafe_allow_html=True)
-                checks_l = [
-                    ("Receita > 7% a.a.",    rev_g > 0.07,  f"{rev_g*100:.1f}%"),
-                    ("EPS Growth > 9%",       eps_g > 0.09,  f"{eps_g*100:.1f}%"),
-                    ("Margem Líquida > 10%",  margin > 0.10, f"{margin*100:.1f}%"),
-                ]
-                for label, passed, val in checks_l:
-                    score += 1 if passed else 0
-                    icon   = "✅" if passed else "❌"
-                    color  = "#00FF85" if passed else "#FF5252"
-                    st.markdown(f'<div class="metric-row"><span>{label}</span><span style="color:{color}; font-family:Space Mono,monospace;">{val} {icon}</span></div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+    # ── Add Record ──────────────────────────────────────────────────────
+    with st.expander("➕  Registar Mês"):
+        mf  = st.selectbox("Mês", get_months(), key="m_flx")
+        sal = st.number_input("Salário / Total Entradas (€)", min_value=0.0, format="%.2f", key="sal")
 
-            with col_r:
-                st.markdown('<div class="dcf-box"><div class="dcf-title">💎 Qualidade & Balanço</div>', unsafe_allow_html=True)
-                cfo_ni = cfo / ni if ni != 0 else 0
-                checks_r = [
-                    ("ROE > 15%",            roe > 0.15,         f"{roe*100:.1f}%"),
-                    ("CFO / Net Income > 90%", cfo_ni > 0.90,    f"{cfo_ni*100:.1f}%"),
-                    ("Dívida/EBITDA < 3x",   0 < debt_ebit < 3,  f"{debt_ebit:.2f}x"),
-                ]
-                for label, passed, val in checks_r:
-                    score += 1 if passed else 0
-                    icon   = "✅" if passed else "❌"
-                    color  = "#00FF85" if passed else "#FF5252"
-                    st.markdown(f'<div class="metric-row"><span>{label}</span><span style="color:{color}; font-family:Space Mono,monospace;">{val} {icon}</span></div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px; color:#556080; margin:14px 0 6px; letter-spacing:1px;'>DESPESAS POR CATEGORIA</div>", unsafe_allow_html=True)
+        cat_vals = {}
+        c1_d,c2_d = st.columns(2)
+        for idx, cat in enumerate(DESPESA_CATS):
+            col = c1_d if idx % 2 == 0 else c2_d
+            cat_vals[cat] = col.number_input(f"{cat} (€)", min_value=0.0, format="%.2f", key=f"cat_{cat}")
 
-            # ── VALUATION (SECTOR-ADJUSTED) ──
-            iv_result = calculate_intrinsic_value(info, sector)
-            iv        = iv_result["value"]
-            upside    = ((iv / price) - 1) * 100 if price > 0 and iv > 0 else 0
+        total_desp = sum(cat_vals.values())
+        sobra      = sal - total_desp
+        taxa_p     = (sobra/sal*100) if sal > 0 else 0
+        tc         = "#00E87A" if sobra >= 0 else "#FF4D6A"
 
-            # Verdict
-            if iv > 0:
-                if score >= 5 and upside > 15:
-                    verdict, vcolor = "✦  APPROVED", "#00FF85"
-                elif score >= 3 and upside > -10:
-                    verdict, vcolor = "◈  WATCHLIST", "#FFD700"
-                else:
-                    verdict, vcolor = "✕  REJECTED", "#FF5252"
+        st.markdown(f"""
+            <div style="background:#0D1219; border-radius:8px; padding:14px 16px; margin-top:12px; border:1px solid #1E2A3E;">
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                    <span style="color:#8899BB;">Total Despesas</span>
+                    <span style="font-family:'Space Mono',monospace; color:#FF4D6A;">{total_desp:,.2f} €</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:700;">
+                    <span style="color:#AABBDD;">Poupança do Mês</span>
+                    <span style="font-family:'Space Mono',monospace; color:{tc};">{sobra:,.2f} € ({taxa_p:.1f}%)</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("GRAVAR FLUXO"):
+            # Save summary to poupanca.csv
+            summary = pd.DataFrame([{"Mês":mf,"Entradas":sal,"Saidas":total_desp}])
+            save_db(pd.concat([df_f, summary], ignore_index=True), "poupanca")
+            # Save category breakdown to despesas.csv
+            cat_rows = [{"Mês":mf,"Categoria":cat,"Saidas":val} for cat, val in cat_vals.items()]
+            save_db(pd.concat([df_desp, pd.DataFrame(cat_rows)], ignore_index=True), "despesas")
+            st.cache_data.clear()
+            st.success("✅  Gravado.")
+            st.rerun()
+
+    # ── History ──────────────────────────────────────────────────────────
+    for i, r in df_f.iterrows():
+        net  = float(r["Entradas"]) - float(r["Saidas"])
+        taxa = (net/float(r["Entradas"])*100) if float(r["Entradas"]) > 0 else 0
+        nc   = "#00E87A" if net >= 0 else "#FF4D6A"
+
+        # category detail for this month
+        cat_detail = ""
+        if not df_desp.empty and "Categoria" in df_desp.columns:
+            mc = df_desp[(df_desp["Mês"]==r["Mês"]) & (df_desp["Categoria"] != "_total_")]
+            if not mc.empty:
+                parts = [f'{row["Categoria"]}: {float(row["Saidas"]):,.0f}€' for _, row in mc.iterrows() if float(row["Saidas"]) > 0]
+                cat_detail = " · ".join(parts[:5])
+
+        c_card, c_del = st.columns([11,1])
+        with c_card:
+            st.markdown(f"""
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
+                        <span style="color:{nc}; font-family:'Space Mono',monospace; font-weight:700;">{net:,.2f} € poupados ({taxa:.1f}%)</span>
+                    </div>
+                    <div style="font-size:11px; color:#304060; margin-top:5px;">
+                        Entradas: {float(r["Entradas"]):,.0f}€ · Saídas: {float(r["Saidas"]):,.0f}€
+                    </div>
+                    {'<div style="font-size:11px; color:#253040; margin-top:3px;">'+cat_detail+'</div>' if cat_detail else ''}
+                </div>
+            """, unsafe_allow_html=True)
+        with c_del:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑", key=f"df_{i}"):
+                save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
+                st.rerun()
+
+# ══════════════════════════════════════════════════════════════════
+# TAB 3 — OBJETIVOS
+# ══════════════════════════════════════════════════════════════════
+with tab3:
+    df_obj  = load_db("objetivos")
+    df_p2   = load_db("patrimonio")
+    pat_now = float(df_p2["Total"].iloc[0]) if not df_p2.empty else 0
+    df_fx   = load_db("poupanca")
+    avg_sav = 0
+    if not df_fx.empty and "Entradas" in df_fx.columns:
+        avg_sav = float((df_fx["Entradas"] - df_fx["Saidas"]).mean())
+
+    st.markdown(f"""
+        <div style="text-align:center; padding:16px 0 24px;">
+            <div style="font-size:11px; color:#304060; letter-spacing:4px; font-family:'Space Mono',monospace; margin-bottom:8px;">PATRIMÓNIO ATUAL</div>
+            <div style="font-size:2em; font-weight:700; color:#00E87A; font-family:'Space Mono',monospace;">{pat_now:,.0f} €</div>
+            {'<div style="font-size:12px; color:#556080; margin-top:6px;">Poupança média: '+f'{avg_sav:,.0f}€/mês</div>' if avg_sav > 0 else ''}
+        </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("➕  Definir Novo Objetivo"):
+        o_nome = st.text_input("Nome do Objetivo", placeholder="ex: 100K Club, Casa, Reforma Antecipada...")
+        oc1,oc2 = st.columns(2)
+        o_meta = oc1.number_input("Meta (€)", min_value=0.0, format="%.0f")
+        o_ano  = oc2.number_input("Ano Alvo", min_value=2024, max_value=2060, value=datetime.now().year+3, step=1)
+        o_emoji = st.selectbox("Ícone", ["🎯","🏠","🚀","🏖️","💎","🏎️","📚","💰","🌍","🔥"])
+        if st.button("CRIAR OBJETIVO"):
+            if o_nome and o_meta > 0:
+                row = pd.DataFrame([{"Nome":o_nome,"Meta":o_meta,"Ano":int(o_ano),"Emoji":o_emoji}])
+                save_db(pd.concat([df_obj, row], ignore_index=True), "objetivos")
+                st.success("✅  Objetivo criado!")
+                st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if not df_obj.empty:
+        for i, obj in df_obj.iterrows():
+            meta      = float(obj["Meta"])
+            prog      = min(pat_now/meta*100, 100) if meta > 0 else 0
+            restante  = max(meta - pat_now, 0)
+            anos_left = int(obj["Ano"]) - datetime.now().year
+            months_needed = int(restante/avg_sav) if avg_sav > 0 and restante > 0 else None
+            on_track  = months_needed is not None and months_needed <= anos_left*12
+
+            bc = "#00E87A" if prog >= 75 else "#FFD060" if prog >= 40 else "#00BFFF"
+            if prog >= 100: bc = "#00E87A"
+
+            if prog >= 100:
+                track = "🎉 OBJETIVO ATINGIDO!"
+            elif months_needed is not None:
+                track = f"✅ No caminho certo — aprox. {months_needed} meses" if on_track else f"⚠️ Ao ritmo atual: {months_needed} meses (objetivo: {anos_left*12})"
             else:
-                verdict, vcolor = "⚠  DADOS INSUFICIENTES", "#888"
+                track = ""
 
-            st.markdown(f'<div class="verdict-bar" style="background:{vcolor}22; color:{vcolor}; border:1px solid {vcolor}44;">{verdict} &nbsp; ({score}/6)</div>', unsafe_allow_html=True)
+            c_obj, c_del = st.columns([11,1])
+            with c_obj:
+                st.markdown(f"""
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <div>
+                                <span style="font-size:1.3em;">{obj["Emoji"]}</span>
+                                <span style="font-size:1.05em; font-weight:700; color:#DDE3EF; margin-left:8px;">{obj["Nome"]}</span>
+                                <span style="font-size:11px; color:#304060; margin-left:8px;">até {int(obj["Ano"])}</span>
+                            </div>
+                            <span style="font-family:'Space Mono',monospace; font-weight:700; color:{bc}; font-size:1.1em;">{prog:.1f}%</span>
+                        </div>
+                        <div style="background:#111720; border-radius:20px; height:10px; margin-bottom:10px;">
+                            <div style="width:{prog:.1f}%; height:10px; border-radius:20px; background:{bc};"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; color:#556080;">
+                            <span>{pat_now:,.0f}€ atual</span>
+                            <span style="color:#304060;">faltam {restante:,.0f}€</span>
+                            <span>{meta:,.0f}€ meta</span>
+                        </div>
+                        {'<div style="font-size:12px; color:#556080; margin-top:8px;">'+track+'</div>' if track else ''}
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_del:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🗑", key=f"do_{i}"):
+                    save_db(df_obj.drop(i).reset_index(drop=True), "objetivos")
+                    st.rerun()
+    else:
+        st.markdown("""
+            <div style="text-align:center; padding:50px 20px; color:#253040;">
+                <div style="font-size:2.5em; margin-bottom:12px;">🎯</div>
+                <div style="font-family:'Space Mono',monospace; font-size:13px; letter-spacing:2px;">SEM OBJETIVOS DEFINIDOS</div>
+                <div style="font-size:12px; margin-top:8px; color:#1E2A3E;">Define uma meta financeira para acompanhar o progresso</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            # ── PRICE vs IV ──
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Preço Atual", f"{price:.2f} {currency}")
-            if iv > 0:
-                m2.metric(f"Valor Intrínseco", f"{iv:.2f} {currency}", delta=f"{upside:+.1f}%")
-            else:
-                m2.metric("Valor Intrínseco", "N/A")
-            m3.metric("P/E TTM", f"{pe_ttm:.1f}x" if pe_ttm > 0 else "N/A")
-            m4.metric("EV/EBITDA", f"{ev_ebitda:.1f}x" if ev_ebitda > 0 else "N/A")
+# ══════════════════════════════════════════════════════════════════
+# TAB 4 — ANÁLISE DE AÇÕES
+# ══════════════════════════════════════════════════════════════════
+with tab4:
+    st.markdown("<div style='margin-bottom:6px; font-size:12px; color:#304060; letter-spacing:2px;'>TICKER SYMBOL</div>", unsafe_allow_html=True)
+    col_inp, col_btn = st.columns([5,1])
+    with col_inp:
+        ticker_input = st.text_input(
+            label="ticker", label_visibility="collapsed",
+            placeholder="ex: AAPL   GOOGL   NVDA   MSFT   EDP.LS",
+            key="ticker_field"
+        ).strip().upper()
+    with col_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        do_scan = st.button("▶  SCAN", key="scan_btn")
 
-            # ── VALUATION BREAKDOWN ──
-            cfg = get_sector_config(sector)
-            st.markdown(f'''
-                <div class="dcf-box" style="margin-top:16px;">
-                    <div class="dcf-title">🔢 Metodologia: {iv_result["method_label"]}</div>
-            ''', unsafe_allow_html=True)
-            for k, v in iv_result["components"].items():
-                st.markdown(f'<div class="dcf-row"><span>{k}</span><span>{v}</span></div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+    if "active_ticker" not in st.session_state:
+        st.session_state.active_ticker = ""
+    if do_scan and ticker_input:
+        st.session_state.active_ticker = ticker_input
 
-            # ── EXTRA METRICS ──
-            with st.expander("📊 Métricas Adicionais"):
-                extras = {
-                    "Beta": f"{beta:.2f}",
-                    "Market Cap": f"${info.get('marketCap', 0)/1e9:.1f}B" if info.get('marketCap') else "N/A",
-                    "P/E Forward": f"{pe_fwd:.1f}x" if pe_fwd > 0 else "N/A",
-                    "P/S Ratio": f"{info.get('priceToSalesTrailing12Months', 0):.1f}x" if info.get('priceToSalesTrailing12Months') else "N/A",
-                    "P/B Ratio": f"{info.get('priceToBook', 0):.1f}x" if info.get('priceToBook') else "N/A",
-                    "Dividend Yield": f"{info.get('dividendYield', 0)*100:.2f}%" if info.get('dividendYield') else "N/A",
-                    "52W High": f"{info.get('fiftyTwoWeekHigh', 0):.2f}" if info.get('fiftyTwoWeekHigh') else "N/A",
-                    "52W Low": f"{info.get('fiftyTwoWeekLow', 0):.2f}" if info.get('fiftyTwoWeekLow') else "N/A",
-                    "Analistas (Preço Alvo)": f"{info.get('targetMeanPrice', 0):.2f}" if info.get('targetMeanPrice') else "N/A",
-                    "Recomendação": info.get('recommendationKey', 'N/A').upper(),
-                }
-                col1, col2 = st.columns(2)
-                items = list(extras.items())
-                for j, (k, v) in enumerate(items):
-                    (col1 if j % 2 == 0 else col2).markdown(
-                        f'<div class="metric-row"><span style="color:#606880;">{k}</span><span style="font-family:Space Mono,monospace;">{v}</span></div>',
-                        unsafe_allow_html=True
-                    )
+    ticker_to_use = st.session_state.active_ticker
 
-    elif ticker_in and not scan_btn:
-        st.session_state.last_ticker = ticker_in
+    if ticker_to_use:
+        with st.spinner(f"A carregar {ticker_to_use}..."):
+            info, err = fetch_info(ticker_to_use)
 
-st.markdown("<br><center style='color:#252B3B; font-size:10px; font-family:Space Mono,monospace;'>FARIA QUANT TERMINAL v9.0  ·  FOR PERSONAL USE ONLY</center>", unsafe_allow_html=True)
+        if err:
+            st.error(f"❌  {err}")
+            st.info("💡  Confirma o ticker em finance.yahoo.com — Ex: GOOGL, AAPL, EDP.LS")
+        else:
+            price    = sg(info,"currentPrice","regularMarketPrice","previousClose",default=0)
+            sector   = info.get("sector","")   or "N/A"
+            industry = info.get("industry","") or "N/A"
+            name     = info.get("longName") or info.get("shortName","") or ticker_to_use
+            currency = info.get("currency","USD")
+            exch     = info.get("exchange","") or ""
+
+            st.markdown(f"""
+                <div style="margin:8px 0 18px;">
+                    <div style="font-size:1.45em; font-weight:700;">
+                        {name} <span class="badge">{sector}</span> <span class="badge">{industry[:35]}</span>
+                    </div>
+                    <div style="font-size:11px; color:#304060; margin-top:5px; font-family:'Space Mono',monospace;">
+                        {ticker_to_use} · {exch} · {currency}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            iv_res  = intrinsic_value(info, sector)
+            iv      = iv_res["iv"]
+            upside  = ((iv/price)-1)*100 if price > 0 and iv > 0 else 0
+            checks, score, n_checks, verdict, vcolor, vbg, vborder, vdesc = run_checklist(info, iv, price)
+
+            st.markdown(f"""
+                <div class="verdict" style="background:{vbg}; border:1px solid {vborder}; color:{vcolor};">
+                    {verdict} · {score}/{n_checks}
+                </div>
+                <div style="background:#0D1219; border-radius:8px; border:1px solid #151C28; padding:12px 18px; margin-bottom:18px; font-size:13px; color:#8899BB;">
+                    {vdesc}
+                </div>
+            """, unsafe_allow_html=True)
+
+            m1,m2,m3,m4 = st.columns(4)
+            m1.metric("Preço Atual",    f"{price:.2f} {currency}")
+            m2.metric("Valor Intrínseco", f"{iv:.2f} {currency}" if iv>0 else "N/A",
+                                           delta=f"{upside:+.1f}%" if iv>0 else None)
+            m3.metric("Metodologia",    iv_res["label"])
+            m4.metric("Score",          f"{score}/{n_checks}")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Checklist by category
+            categories = ["Crescimento","Rentabilidade","Qualidade","Valuation","Risco"]
+            cols = st.columns(2)
+            col_idx = 0
+            for cat in categories:
+                cat_checks = [(l,p,v) for c,l,p,v in checks if c==cat]
+                if not cat_checks: continue
+                cs = sum(1 for _,p,_ in cat_checks if p)
+                ct = len(cat_checks)
+                cc = "#00E87A" if cs==ct else "#FFD060" if cs>0 else "#FF4D6A"
+                html = f'<div class="card"><div class="sec-title">{cat} <span style="color:{cc};">{cs}/{ct}</span></div>'
+                for label,passed,val in cat_checks:
+                    ic = "✅" if passed else "❌"
+                    vc = "#00E87A" if passed else "#FF4D6A"
+                    html += f'<div class="mrow"><span class="label">{label}</span><span class="val" style="color:{vc};">{val} {ic}</span></div>'
+                html += '</div>'
+                with cols[col_idx % 2]:
+                    st.markdown(html, unsafe_allow_html=True)
+                col_idx += 1
+
+            # Valuation breakdown
+            if iv_res["rows"]:
+                st.markdown("<br>", unsafe_allow_html=True)
+                html = f'<div class="card"><div class="sec-title">Valuation Breakdown — {iv_res["label"]}</div>'
+                for k,v in iv_res["rows"]:
+                    html += f'<div class="mrow"><span class="label">{k}</span><span class="val blue">{v}</span></div>'
+                if iv > 0:
+                    uc = "#00E87A" if upside>15 else "#FFD060" if upside>-10 else "#FF4D6A"
+                    html += f'<div class="mrow" style="margin-top:4px;"><span style="color:#AABBDD; font-weight:600;">Upside / Downside</span><span class="val" style="color:{uc}; font-size:15px;">{upside:+.1f}%</span></div>'
+                html += '</div>'
+                st.markdown(html, unsafe_allow_html=True)
+
+            # All metrics
+            with st.expander("📊  Todas as Métricas"):
+                def fmtB(v): return f"${float(v)/1e9:.2f}B" if v else "N/A"
+                def fmtP(v): return f"{float(v)*100:.1f}%" if v else "N/A"
+                def fmtX(v): return f"{float(v):.2f}x" if v else "N/A"
+                def fmtV(v): return f"{float(v):.2f}" if v else "N/A"
+
+                all_m = [
+                    ("── PREÇO & MERCADO","",""),
+                    ("Preço Atual",         fmtV(price),""),
+                    ("Market Cap",          fmtB(info.get("marketCap",0)),""),
+                    ("52W High",            fmtV(sg(info,"fiftyTwoWeekHigh",default=0)),""),
+                    ("52W Low",             fmtV(sg(info,"fiftyTwoWeekLow",default=0)),""),
+                    ("EPS TTM",             fmtV(sg(info,"trailingEps",default=0)),""),
+                    ("EPS Forward",         fmtV(sg(info,"forwardEps",default=0)),""),
+                    ("── VALUATION","",""),
+                    ("P/E TTM",             fmtX(sg(info,"trailingPE",default=0)),""),
+                    ("P/E Forward",         fmtX(sg(info,"forwardPE",default=0)),""),
+                    ("PEG Ratio",           fmtV(sg(info,"pegRatio",default=0)),""),
+                    ("P/S Ratio",           fmtX(sg(info,"priceToSalesTrailing12Months",default=0)),""),
+                    ("P/B Ratio",           fmtX(sg(info,"priceToBook",default=0)),""),
+                    ("EV/EBITDA",           fmtX(sg(info,"enterpriseToEbitda",default=0)),""),
+                    ("EV/Revenue",          fmtX(sg(info,"enterpriseToRevenue",default=0)),""),
+                    ("── CRESCIMENTO","",""),
+                    ("Receita YoY",         fmtP(sg(info,"revenueGrowth",default=0)),""),
+                    ("Lucro YoY",           fmtP(sg(info,"earningsGrowth",default=0)),""),
+                    ("── RENTABILIDADE","",""),
+                    ("Margem Bruta",        fmtP(sg(info,"grossMargins",default=0)),""),
+                    ("Margem Líquida",      fmtP(sg(info,"profitMargins",default=0)),""),
+                    ("ROE",                 fmtP(sg(info,"returnOnEquity",default=0)),""),
+                    ("ROA",                 fmtP(sg(info,"returnOnAssets",default=0)),""),
+                    ("── BALANÇO","",""),
+                    ("Receita Total",       fmtB(info.get("totalRevenue",0)),""),
+                    ("EBITDA",              fmtB(info.get("ebitda",0)),""),
+                    ("Lucro Líquido",       fmtB(info.get("netIncomeToCommon",0)),""),
+                    ("Free Cash Flow",      fmtB(info.get("freeCashflow",0)),""),
+                    ("Caixa Total",         fmtB(info.get("totalCash",0)),""),
+                    ("Dívida Total",        fmtB(info.get("totalDebt",0)),""),
+                    ("Current Ratio",       fmtX(sg(info,"currentRatio",default=0)),""),
+                    ("── RISCO & DIVIDENDO","",""),
+                    ("Beta",                fmtV(sg(info,"beta",default=0)),""),
+                    ("Dividend Yield",      fmtP(sg(info,"dividendYield",default=0)),""),
+                    ("── ANALISTAS","",""),
+                    ("Preço Alvo Médio",    fmtV(sg(info,"targetMeanPrice",default=0)),""),
+                    ("Upside p/ Alvo",      f"{((sg(info,'targetMeanPrice',default=0)/price)-1)*100:+.1f}%" if price and sg(info,'targetMeanPrice',default=0) else "N/A",""),
+                    ("Recomendação",        (info.get("recommendationKey","") or "N/A").upper(),""),
+                ]
+                c1,c2 = st.columns(2)
+                for idx,(k,v,_) in enumerate(all_m):
+                    if k.startswith("──"):
+                        for col in [c1,c2]:
+                            col.markdown(f'<div style="font-size:10px; letter-spacing:3px; color:#253040; margin:14px 0 4px; font-family:Space Mono,monospace;">{k}</div>', unsafe_allow_html=True)
+                    else:
+                        (c1 if idx%2==0 else c2).markdown(
+                            f'<div class="mrow"><span class="label">{k}</span><span class="val">{v}</span></div>',
+                            unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div style="text-align:center; padding:60px 20px; color:#253040;">
+                <div style="font-size:2.5em; margin-bottom:16px;">🔬</div>
+                <div style="font-family:'Space Mono',monospace; font-size:14px; letter-spacing:2px;">INSERE UM TICKER E CLICA SCAN</div>
+                <div style="font-size:12px; margin-top:10px; color:#1E2A3E;">AAPL · GOOGL · NVDA · MSFT · AMZN · EDP.LS</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# FOOTER
+# ─────────────────────────────────────────────
+st.markdown("""
+    <div style="text-align:center; margin-top:40px; padding:16px 0; border-top:1px solid #101520;
+        font-size:10px; color:#1E2A3E; font-family:'Space Mono',monospace; letter-spacing:3px;">
+        FARIA QUANT TERMINAL · FOR PERSONAL USE ONLY
+    </div>
+""", unsafe_allow_html=True)
