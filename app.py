@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from datetime import datetime
 import yfinance as yf
+import matplotlib.pyplot as plt
 
 # --- Configuração página ---
 st.set_page_config(page_title="FARIA PERSONAL APP", page_icon="💰", layout="wide")
@@ -20,7 +21,9 @@ def load_csv(name, columns):
     df.to_csv(path, index=False)
     return df
 
-df_poupanca = load_csv("poupanca", ["Mês", "Salario", "Despesas", "Investimentos"])
+# CSVs
+df_patrimonio = load_csv("patrimonio", ["Mês", "T212", "IBKR", "CRYPTO", "PPR", "Total"])
+df_poupanca = load_csv("poupanca", ["Mês", "Salario", "Despesas", "Investimentos", "Outros"])
 df_investimentos = load_csv("investimentos", ["Ticker", "Valor Intrinseco", "Score", "Data"])
 
 # --- Login ---
@@ -51,7 +54,6 @@ def init_numeric_state(key):
     if key not in st.session_state:
         st.session_state[key] = 0.0
     else:
-        # garante que é float
         try:
             st.session_state[key] = float(st.session_state[key])
         except:
@@ -61,8 +63,11 @@ def init_string_state(key):
     if key not in st.session_state:
         st.session_state[key] = ""
 
-# Inicializar todos
-for k in ["t212", "ibkr", "crypto", "ppr", "salario", "despesas", "investimentos"]:
+# Património inputs
+for k in ["t212", "ibkr", "crypto", "ppr"]:
+    init_numeric_state(k)
+# Poupança inputs
+for k in ["salario", "despesas", "investimentos", "outros"]:
     init_numeric_state(k)
 init_string_state("mes")
 init_string_state("ticker")
@@ -70,7 +75,6 @@ init_string_state("ticker")
 # --- Menu ---
 if st.session_state.acesso:
     st.markdown("---")
-
     col_menu = st.columns([1,1,1])
     with col_menu[0]:
         menu_card("📊 Património", "patrimonio", "#1E90FF")
@@ -79,9 +83,9 @@ if st.session_state.acesso:
     with col_menu[2]:
         menu_card("📈 Investimentos", "investimentos", "#FF6F61")
 
-    # --- Património ---
+    # ---------------- Património ----------------
     if st.session_state.menu == "patrimonio":
-        st.subheader("Adicionar os valores do seu portfolio")
+        st.subheader("Adicionar valores do seu portfolio")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.session_state.t212 = st.number_input("T212 (€)", min_value=0.0, value=st.session_state.t212, step=1.0, key="input_t212")
@@ -91,47 +95,75 @@ if st.session_state.acesso:
             st.session_state.crypto = st.number_input("CRYPTO (€)", min_value=0.0, value=st.session_state.crypto, step=1.0, key="input_crypto")
         with col4:
             st.session_state.ppr = st.number_input("PPR (€)", min_value=0.0, value=st.session_state.ppr, step=1.0, key="input_ppr")
+        
+        total = st.session_state.t212 + st.session_state.ibkr + st.session_state.crypto + st.session_state.ppr
+        st.metric("TOTAL PORTFOLIO", f"€{total:.2f}")
 
-        total_portfolio = st.session_state.t212 + st.session_state.ibkr + st.session_state.crypto + st.session_state.ppr
-        st.metric("TOTAL PORTFOLIO", f"€{total_portfolio:.2f}")
+        # Adicionar ao histórico
+        with st.expander("Adicionar registro histórico", expanded=True):
+            mes_input = st.text_input("Mês", key="mes_patrimonio")
+            if st.button("Adicionar Património", key="add_patrimonio"):
+                if mes_input:
+                    df_patrimonio.loc[len(df_patrimonio)] = [mes_input, st.session_state.t212, st.session_state.ibkr, st.session_state.crypto, st.session_state.ppr, total]
+                    df_patrimonio.to_csv("dados/patrimonio.csv", index=False)
+                    st.success("Registro adicionado!")
+                    st.experimental_rerun()
+        
+        # Mostrar histórico
+        if not df_patrimonio.empty:
+            st.subheader("Histórico Património")
+            st.dataframe(df_patrimonio)
+            # Gráfico evolução
+            df_patrimonio_plot = df_patrimonio.copy()
+            df_patrimonio_plot["Total"] = df_patrimonio_plot["Total"].astype(float)
+            plt.figure(figsize=(8,4))
+            plt.plot(df_patrimonio_plot["Mês"], df_patrimonio_plot["Total"], marker="o")
+            plt.title("Evolução do Património")
+            plt.xlabel("Mês")
+            plt.ylabel("Total (€)")
+            plt.xticks(rotation=45)
+            st.pyplot(plt)
 
-    # --- Poupança ---
+    # ---------------- Poupança ----------------
     if st.session_state.menu == "poupanca":
         st.subheader("Registos de Poupança")
-        with st.expander("ADICIONAR REGISTO", expanded=True):
-            col1, col2, col3, col4 = st.columns(4)
+        tab1, tab2 = st.tabs(["Adicionar", "Resumo Histórico"])
+        
+        # Aba 1: Adicionar
+        with tab1:
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
-                st.session_state.mes = st.text_input("MÊS", value=st.session_state.mes, key="input_mes")
+                st.session_state.mes = st.text_input("Mês", value=st.session_state.mes, key="input_mes")
             with col2:
-                st.session_state.salario = st.number_input("SALÁRIO (€)", min_value=0.0, value=st.session_state.salario, step=1.0, key="input_salario")
+                st.session_state.salario = st.number_input("Salário (€)", min_value=0.0, value=st.session_state.salario, step=1.0, key="input_salario")
             with col3:
-                st.session_state.despesas = st.number_input("DESPESAS (€)", min_value=0.0, value=st.session_state.despesas, step=1.0, key="input_despesas")
+                st.session_state.despesas = st.number_input("Despesas (€)", min_value=0.0, value=st.session_state.despesas, step=1.0, key="input_despesas")
             with col4:
-                st.session_state.investimentos = st.number_input("INVESTIMENTOS (€)", min_value=0.0, value=st.session_state.investimentos, step=1.0, key="input_investimentos")
-            if st.button("ADICIONAR", key="add_poupanca"):
-                df_poupanca.loc[len(df_poupanca)] = [st.session_state.mes, st.session_state.salario, st.session_state.despesas, st.session_state.investimentos]
+                st.session_state.investimentos = st.number_input("Investimentos (€)", min_value=0.0, value=st.session_state.investimentos, step=1.0, key="input_investimentos")
+            with col5:
+                st.session_state.outros = st.number_input("Outros (€)", min_value=0.0, value=st.session_state.outros, step=1.0, key="input_outros")
+            
+            if st.button("Adicionar Registro", key="add_poupanca"):
+                df_poupanca.loc[len(df_poupanca)] = [st.session_state.mes, st.session_state.salario, st.session_state.despesas, st.session_state.investimentos, st.session_state.outros]
                 df_poupanca.to_csv("dados/poupanca.csv", index=False)
-                st.success("Registo adicionado!")
+                st.success("Registro adicionado!")
                 st.experimental_rerun()
+        
+        # Aba 2: Resumo histórico
+        with tab2:
+            if not df_poupanca.empty:
+                st.dataframe(df_poupanca)
+                df_poupanca_plot = df_poupanca.copy()
+                df_poupanca_plot["Poupanca (%)"] = ((df_poupanca_plot["Salario"] - df_poupanca_plot["Despesas"] - df_poupanca_plot["Investimentos"] - df_poupanca_plot["Outros"])/df_poupanca_plot["Salario"]*100).astype(float)
+                plt.figure(figsize=(8,4))
+                plt.plot(df_poupanca_plot["Mês"], df_poupanca_plot["Poupanca (%)"], marker="o", color="green")
+                plt.title("Evolução da Poupança (%)")
+                plt.xlabel("Mês")
+                plt.ylabel("Poupança (%)")
+                plt.xticks(rotation=45)
+                st.pyplot(plt)
 
-        if not df_poupanca.empty:
-            for i, row in df_poupanca.iterrows():
-                col1, col2, col3, col4, col5 = st.columns([2,2,2,2,1])
-                with col1: st.write(f"{row['Mês']}")
-                with col2: st.write(f"Salário: €{row['Salario']}")
-                with col3: st.write(f"Despesas: €{row['Despesas']}")
-                with col4: st.write(f"Investimentos: €{row['Investimentos']}")
-                with col5:
-                    if st.button(f"APAGAR {i}", key=f"del_{i}"):
-                        df_poupanca = df_poupanca.drop(i).reset_index(drop=True)
-                        df_poupanca.to_csv("dados/poupanca.csv", index=False)
-                        st.experimental_rerun()
-
-        if not df_poupanca.empty:
-            df_poupanca["Poupanca (%)"] = (df_poupanca["Salario"] - df_poupanca["Despesas"] - df_poupanca["Investimentos"]) / df_poupanca["Salario"] * 100
-            st.metric("Média Poupança", f"{df_poupanca['Poupanca (%)'].mean():.2f}%")
-
-    # --- Investimentos ---
+    # ---------------- Investimentos ----------------
     if st.session_state.menu == "investimentos":
         st.subheader("Analisar Investimento")
         st.session_state.ticker = st.text_input("TICKER (ex: AAPL)", value=st.session_state.ticker, key="input_ticker").upper()
