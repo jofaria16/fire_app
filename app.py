@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import os
 from datetime import datetime
@@ -738,279 +737,104 @@ TREINO = {
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
-def render_pin_screen(buf: str, shake: bool):
-    n     = len(buf)
-    dots  = "".join([
-        f'<div class="dot {"filled" if i < n else ""}"></div>'
-        for i in range(4)
-    ])
-    shake_cls = "shake" if shake else ""
-
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  * {{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color: transparent; }}
-  body {{
-    font-family:'Inter',-apple-system,sans-serif;
-    background:#FFFFFF;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    min-height:100vh; padding:40px 32px;
-    -webkit-font-smoothing:antialiased;
-  }}
-  .logo {{
-    font-size:28px; font-weight:900; color:#0F172A;
-    letter-spacing:-1px; margin-bottom:8px;
-  }}
-  .logo em {{ color:#2563EB; font-style:normal; }}
-  .subtitle {{
-    font-size:14px; color:#94A3B8; font-weight:400;
-    margin-bottom:52px; text-align:center;
-  }}
-  .dots {{
-    display:flex; gap:18px; margin-bottom:52px;
-    justify-content:center;
-    animation: {shake_cls} 0.45s cubic-bezier(.4,0,.2,1);
-  }}
-  .dot {{
-    width:15px; height:15px; border-radius:50%;
-    border:2px solid #CBD5E1; background:transparent;
-    transition:all 0.14s cubic-bezier(.4,0,.2,1);
-  }}
-  .dot.filled {{
-    background:#0F172A; border-color:#0F172A;
-    transform:scale(1.12);
-  }}
-  .dot.error {{
-    background:#EF4444; border-color:#EF4444;
-  }}
-  @keyframes shake {{
-    0%,100% {{ transform:translateX(0); }}
-    15%  {{ transform:translateX(-8px); }}
-    30%  {{ transform:translateX(8px); }}
-    45%  {{ transform:translateX(-5px); }}
-    60%  {{ transform:translateX(5px); }}
-    75%  {{ transform:translateX(-3px); }}
-  }}
-  .keypad {{
-    display:grid; grid-template-columns:repeat(3,1fr);
-    gap:14px; width:100%; max-width:300px;
-  }}
-  .key {{
-    width:80px; height:80px; margin:0 auto;
-    border-radius:50%;
-    background:#F8FAFC;
-    border:1.5px solid #F1F5F9;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    cursor:pointer;
-    box-shadow:0 2px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    transition:all 0.10s cubic-bezier(.4,0,.2,1);
-    user-select:none; -webkit-user-select:none;
-    position:relative; overflow:hidden;
-  }}
-  .key:active {{
-    background:#E2E8F0;
-    transform:scale(0.92);
-    box-shadow:0 1px 2px rgba(0,0,0,0.04);
-  }}
-  .key .num {{
-    font-size:24px; font-weight:500; color:#0F172A;
-    line-height:1;
-  }}
-  .key .sub {{
-    font-size:8px; font-weight:700; color:#94A3B8;
-    letter-spacing:1.5px; margin-top:3px;
-    text-transform:uppercase;
-  }}
-  .key.empty {{ background:transparent; border-color:transparent; box-shadow:none; cursor:default; }}
-  .key.empty:active {{ transform:none; background:transparent; }}
-  .key.del {{ background:transparent; border-color:transparent; box-shadow:none; }}
-  .key.del .num {{ font-size:20px; color:#64748B; }}
-  .key.del:active {{ background:#F1F5F9; }}
-  .key.zero .num {{ font-size:24px; }}
-  .error-msg {{
-    margin-top:24px; height:20px;
-    font-size:13px; font-weight:600; color:#EF4444;
-    text-align:center; opacity:{'1' if shake else '0'};
-    transition:opacity 0.2s;
-  }}
-  /* ripple effect */
-  .ripple {{
-    position:absolute; border-radius:50%;
-    background:rgba(0,0,0,0.08);
-    transform:scale(0); animation:ripple 0.4s linear;
-    pointer-events:none;
-  }}
-  @keyframes ripple {{
-    to {{ transform:scale(4); opacity:0; }}
-  }}
-</style>
-</head>
-<body>
-  <div class="logo">F<em>|</em>QUANT</div>
-  <div class="subtitle">Introduce o teu PIN para continuar</div>
-  <div class="dots {shake_cls}" id="dots">{dots}</div>
-  <div class="keypad" id="keypad">
-    <div class="key" data-val="1" onclick="press(this,'1')"><span class="num">1</span></div>
-    <div class="key" data-val="2" onclick="press(this,'2')"><span class="num">2</span><span class="sub">ABC</span></div>
-    <div class="key" data-val="3" onclick="press(this,'3')"><span class="num">3</span><span class="sub">DEF</span></div>
-    <div class="key" data-val="4" onclick="press(this,'4')"><span class="num">4</span><span class="sub">GHI</span></div>
-    <div class="key" data-val="5" onclick="press(this,'5')"><span class="num">5</span><span class="sub">JKL</span></div>
-    <div class="key" data-val="6" onclick="press(this,'6')"><span class="num">6</span><span class="sub">MNO</span></div>
-    <div class="key" data-val="7" onclick="press(this,'7')"><span class="num">7</span><span class="sub">PQRS</span></div>
-    <div class="key" data-val="8" onclick="press(this,'8')"><span class="num">8</span><span class="sub">TUV</span></div>
-    <div class="key" data-val="9" onclick="press(this,'9')"><span class="num">9</span><span class="sub">WXYZ</span></div>
-    <div class="key empty"></div>
-    <div class="key zero" data-val="0" onclick="press(this,'0')"><span class="num">0</span></div>
-    <div class="key del" onclick="pressKey('DEL')"><span class="num">⌫</span></div>
-  </div>
-  <div class="error-msg">PIN incorreto. Tenta novamente.</div>
-
-<script>
-  var buf = "{buf}";
-
-  function rippleEffect(el, e) {{
-    var r = document.createElement('span');
-    r.className = 'ripple';
-    var rect = el.getBoundingClientRect();
-    var size = Math.max(rect.width, rect.height);
-    r.style.width = r.style.height = size + 'px';
-    r.style.left = (e.clientX - rect.left - size/2) + 'px';
-    r.style.top  = (e.clientY - rect.top  - size/2) + 'px';
-    el.appendChild(r);
-    setTimeout(function(){{ r.remove(); }}, 400);
-  }}
-
-  function updateDots() {{
-    var dots = document.querySelectorAll('.dot');
-    dots.forEach(function(d, i) {{ d.classList.toggle('filled', i < buf.length); }});
-  }}
-
-  function pressKey(val) {{
-    if (val === 'DEL') {{
-      buf = buf.slice(0,-1);
-      updateDots();
-      window.parent.postMessage({{type:'pin',action:'del'}}, '*');
-    }}
-  }}
-
-  function press(el, val) {{
-    if (buf.length >= 4) return;
-    buf += val;
-    updateDots();
-    // haptic on mobile
-    if (navigator.vibrate) navigator.vibrate(8);
-    window.parent.postMessage({{type:'pin',action:'digit',val:val}}, '*');
-  }}
-
-  document.querySelectorAll('.key:not(.empty):not(.del)').forEach(function(k) {{
-    k.addEventListener('mousedown', function(e) {{ rippleEffect(k, e); }});
-    k.addEventListener('touchstart', function(e) {{ rippleEffect(k, e.touches[0]); }}, {{passive:true}});
-  }});
-</script>
-</body>
-</html>
-"""
-    return html
-
-
 if not st.session_state.auth:
-    components.html(
-        render_pin_screen(st.session_state.pin_buf, st.session_state.pin_shake),
-        height=680, scrolling=False
-    )
+    buf   = st.session_state.pin_buf
+    shake = st.session_state.pin_shake
+    n     = len(buf)
 
-    # Invisible Streamlit buttons that JS messages trigger via query params
-    # We use a hidden text input to receive the PIN
-    pin_val = st.text_input("pin_hidden", value="", key="pin_hidden_input", label_visibility="collapsed")
-
-    # Fallback keypad using Streamlit buttons (visible, styled as PIN keys)
+    # ── PIN-specific button style (circular keys) ──────────────────
     st.markdown("""
-        <style>
-        /* Override only for PIN screen buttons */
-        section[data-testid="stMain"] div.stButton > button {
-            height: 72px !important;
-            border-radius: 50% !important;
-            width: 72px !important;
-            font-size: 22px !important;
-            font-weight: 500 !important;
-            background: #F8FAFC !important;
-            border: 1.5px solid #F1F5F9 !important;
-            color: #0F172A !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
-            padding: 0 !important;
-            letter-spacing: 0 !important;
-            display: block !important;
-            margin: 0 auto !important;
-        }
-        section[data-testid="stMain"] div.stButton > button:hover {
-            background: #E2E8F0 !important;
-            transform: scale(0.94) !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
-        }
-        </style>
+    <style>
+    .stApp { background: #FFFFFF !important; }
+    div.stButton > button {
+        height: 72px !important; width: 72px !important;
+        border-radius: 50% !important;
+        font-size: 22px !important; font-weight: 500 !important;
+        background: #F1F5F9 !important;
+        border: none !important;
+        color: #0F172A !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+        padding: 0 !important; letter-spacing: 0 !important;
+        display: block !important; margin: 0 auto !important;
+        transition: background 0.1s, transform 0.1s !important;
+    }
+    div.stButton > button:hover {
+        background: #E2E8F0 !important;
+        transform: scale(0.93) !important;
+        opacity: 1 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    div.stButton > button:active {
+        background: #CBD5E1 !important;
+        transform: scale(0.88) !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-    buf = st.session_state.pin_buf
-    shake = st.session_state.pin_shake
-    n = len(buf)
-
-    # Header
-    dot_css = "".join([
-        f'<div style="width:14px;height:14px;border-radius:50%;border:2px solid {"#EF4444" if shake else "#CBD5E1"};background:{"#EF4444" if shake else "#0F172A" if i<n else "transparent"};transition:all 0.14s ease;"></div>'
+    # ── Dots ──────────────────────────────────────────────────────
+    dot_color  = "#EF4444" if shake else "#0F172A"
+    dot_border = "#EF4444" if shake else "#CBD5E1"
+    dots_html = "".join([
+        f'<div style="width:14px;height:14px;border-radius:50%;'
+        f'border:2px solid {dot_border if i>=n else dot_color};'
+        f'background:{"transparent" if i>=n else dot_color};'
+        f'transition:all 0.12s ease;transform:{"scale(1.1)" if i==n-1 else "scale(1)"};"></div>'
         for i in range(4)
     ])
+
+    # ── Header ────────────────────────────────────────────────────
     st.markdown(f"""
-        <div style="text-align:center; padding:40px 0 10px;">
-            <div style="font-size:28px;font-weight:900;color:#0F172A;letter-spacing:-1px;margin-bottom:6px;">F<span style="color:#2563EB;">|</span>QUANT</div>
-            <div style="font-size:14px;color:#94A3B8;margin-bottom:44px;">Introduce o teu PIN para continuar</div>
-            <div style="display:flex;gap:18px;justify-content:center;margin-bottom:44px;">
-                {dot_css}
+        <div style="text-align:center;padding:60px 0 8px;">
+            <div style="font-size:30px;font-weight:900;color:#0F172A;letter-spacing:-1px;margin-bottom:6px;">
+                F<span style="color:#2563EB;">|</span>QUANT
+            </div>
+            <div style="font-size:14px;color:#94A3B8;margin-bottom:52px;">Introduce o teu PIN</div>
+            <div style="display:flex;gap:20px;justify-content:center;margin-bottom:52px;">
+                {dots_html}
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # Keypad rows
+    # ── Keypad ────────────────────────────────────────────────────
     keymap = [
-        [("1","1"), ("2","2"), ("3","3")],
-        [("4","4"), ("5","5"), ("6","6")],
-        [("7","7"), ("8","8"), ("9","9")],
-        [("","_"),  ("0","0"), ("⌫","del")],
+        [("1","1"),("2","2"),("3","3")],
+        [("4","4"),("5","5"),("6","6")],
+        [("7","7"),("8","8"),("9","9")],
+        [("","_"), ("0","0"),("⌫","del")],
     ]
-
     for row in keymap:
-        cols = st.columns([1,1,1], gap="small")
-        for col, (label, val) in zip(cols, row):
+        c1, c2, c3 = st.columns([1,1,1], gap="small")
+        for col, (label, val) in zip([c1,c2,c3], row):
             with col:
                 if val == "_":
                     st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
                     continue
                 if st.button(label, key=f"pk_{val}"):
                     if val == "del":
-                        st.session_state.pin_buf = buf[:-1]
+                        st.session_state.pin_buf   = buf[:-1]
                         st.session_state.pin_shake = False
                     else:
                         new = buf + val
                         if len(new) <= 4:
-                            st.session_state.pin_buf = new
+                            st.session_state.pin_buf   = new
                             st.session_state.pin_shake = False
-                            if len(new) == 4:
+                            if len(new) == 4:          # ← auto-submit at 4 digits
                                 if new == CORRECT_PIN:
-                                    st.session_state.auth = True
-                                    st.session_state.pin_buf = ""
+                                    st.session_state.auth      = True
+                                    st.session_state.pin_buf   = ""
                                     st.session_state.pin_shake = False
                                 else:
                                     st.session_state.pin_shake = True
-                                    st.session_state.pin_buf = ""
+                                    st.session_state.pin_buf   = ""
                     st.rerun()
 
     if shake:
-        st.markdown('<div style="text-align:center;color:#EF4444;font-size:13px;font-weight:600;margin-top:16px;">PIN incorreto. Tenta novamente.</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <div style="text-align:center;color:#EF4444;font-size:13px;
+                font-weight:600;margin-top:20px;animation:fadeUp 0.2s ease;">
+                PIN incorreto. Tenta novamente.
+            </div>
+        """, unsafe_allow_html=True)
 
     st.stop()
 
