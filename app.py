@@ -1,149 +1,511 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import os
 from datetime import datetime
 import yfinance as yf
 import numpy as np
 
-# ─────────────────────────────────────────────
-# PAGE CONFIG
-# ─────────────────────────────────────────────
-st.set_page_config(
-    page_title="FARIA | QUANT TERMINAL",
-    page_icon="📈",
-    layout="wide"
-)
+st.set_page_config(page_title="F|QUANT", page_icon="◈", layout="wide", initial_sidebar_state="collapsed")
 
-# ─────────────────────────────────────────────
-# CSS — Light Modern / T212 style
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# DESIGN SYSTEM
+# ══════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-
-.stApp { background-color: #F5F7FA; color: #1A202C; }
-.block-container { padding-top: 1.2rem; max-width: 1100px; }
-
-/* HEADER */
-.fq-header { text-align:center; padding:18px 0 12px; border-bottom:1px solid #E2E8F0; margin-bottom:20px; }
-.fq-logo-f { font-size:22px; font-weight:800; color:#1A202C; letter-spacing:-0.5px; }
-.fq-logo-q { font-size:22px; font-weight:400; color:#3B82F6; letter-spacing:-0.5px; }
-.fq-sub    { font-size:10px; color:#A0AEC0; letter-spacing:4px; margin-top:3px; }
-
-/* CARDS */
-.card {
-    background:#FFFFFF;
-    border:1px solid #E2E8F0;
-    border-radius:12px;
-    padding:16px 18px;
-    margin-bottom:10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    transition: box-shadow 0.2s, border-color 0.2s;
+/* ─── RESET ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
-.card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); border-color:#CBD5E0; }
+.stApp { background: #F0F2F5; color: #0F172A; }
+.block-container { padding: 0 !important; max-width: 100% !important; }
 
-/* METRIC ROWS */
-.mrow { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #F0F4F8; font-size:13.5px; }
-.mrow:last-child { border-bottom:none; }
-.mrow .label { color:#718096; }
-.mrow .val   { font-weight:600; font-size:13px; color:#2D3748; }
-.green  { color:#10B981; }
-.red    { color:#EF4444; }
-.gold   { color:#F59E0B; }
-.blue   { color:#3B82F6; }
+/* ─── HIDE STREAMLIT CHROME ───────────────────────────────────────── */
+#MainMenu, footer, header,
+[data-testid="stToolbar"], [data-testid="stDecoration"],
+[data-testid="stStatusWidget"], [data-testid="stSidebarNav"],
+.stDeployButton { display: none !important; }
 
-/* SECTION TITLE */
-.sec-title {
-    font-size:10px; letter-spacing:3px; text-transform:uppercase;
-    color:#A0AEC0; font-weight:600;
-    margin-bottom:12px; padding-bottom:8px;
-    border-bottom:1px solid #EDF2F7;
+/* ─── TOPBAR ──────────────────────────────────────────────────────── */
+.topbar {
+    position: sticky; top: 0; z-index: 200;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
+.topbar-brand {
+    font-size: 16px; font-weight: 800;
+    color: #0F172A; letter-spacing: -0.6px;
+}
+.topbar-brand em { color: #2563EB; font-style: normal; }
+.topbar-date { font-size: 12px; color: #94A3B8; font-weight: 500; }
 
-/* VERDICT */
-.verdict { padding:14px 24px; border-radius:10px; text-align:center; font-weight:700; font-size:16px; letter-spacing:2px; margin:16px 0; }
-
-/* BADGES */
-.badge { display:inline-block; background:#EDF2F7; border:1px solid #E2E8F0; padding:2px 10px; border-radius:20px; font-size:11px; color:#718096; margin-left:6px; }
-
-/* TABS — T212 style */
+/* ─── TABS ────────────────────────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
-    background:transparent; gap:0; border:none;
-    border-bottom:2px solid #E2E8F0;
+    background: #FFFFFF !important;
+    border-bottom: 1.5px solid #F1F5F9 !important;
+    border-radius: 0 !important; gap: 0 !important;
+    padding: 0 8px !important;
+    box-shadow: 0 1px 0 #F1F5F9;
 }
 .stTabs [data-baseweb="tab"] {
-    color:#A0AEC0; font-size:13px; font-weight:500;
-    padding:10px 18px; border-radius:0; letter-spacing:0.3px;
-    background:transparent !important;
+    font-size: 13px !important; font-weight: 500 !important;
+    color: #94A3B8 !important; padding: 13px 16px !important;
+    border-radius: 0 !important; letter-spacing: 0 !important;
+    background: transparent !important;
+    border-bottom: 2px solid transparent !important;
+    transition: color 0.15s ease !important;
 }
 .stTabs [aria-selected="true"] {
-    color:#3B82F6 !important;
-    border-bottom:2px solid #3B82F6 !important;
-    font-weight:600 !important;
+    color: #2563EB !important; font-weight: 700 !important;
+    border-bottom: 2.5px solid #2563EB !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    background: #F0F2F5 !important;
+    padding: 20px 16px 40px !important;
 }
 
-/* PRIMARY BUTTON */
+/* ─── CARDS ───────────────────────────────────────────────────────── */
+.card {
+    background: #FFFFFF;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    overflow: hidden;
+    margin-bottom: 12px;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+.card-body { padding: 18px 20px; }
+.card-body-sm { padding: 14px 16px; }
+
+/* ─── HERO GRADIENT CARD ──────────────────────────────────────────── */
+.hero {
+    background: linear-gradient(140deg, #1E3A8A 0%, #2563EB 60%, #3B82F6 100%);
+    border-radius: 20px;
+    padding: 26px 22px 22px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(37,99,235,0.28);
+}
+.hero::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 50%;
+}
+.hero::after {
+    content: '';
+    position: absolute; bottom: -30px; left: -20px;
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+}
+.hero-eyebrow {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 6px;
+}
+.hero-amount {
+    font-size: 40px; font-weight: 800;
+    color: #FFFFFF; letter-spacing: -2px;
+    line-height: 1; margin-bottom: 12px;
+}
+.hero-amount sup { font-size: 0.4em; font-weight: 500; opacity: 0.55; letter-spacing: 0; vertical-align: super; }
+.hero-delta {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 500;
+}
+.hero-pill {
+    background: rgba(255,255,255,0.18);
+    border-radius: 100px; padding: 3px 10px;
+    font-size: 12px; font-weight: 700; color: #FFF;
+    letter-spacing: 0.2px;
+}
+.hero-pill.up   { background: rgba(52,211,153,0.25); color: #6EE7B7; }
+.hero-pill.down { background: rgba(248,113,113,0.25); color: #FCA5A5; }
+
+/* ─── SAVINGS HERO ────────────────────────────────────────────────── */
+.savings-hero {
+    background: linear-gradient(140deg, #064E3B 0%, #059669 100%);
+    border-radius: 20px; padding: 24px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 32px rgba(5,150,105,0.22);
+    position: relative; overflow: hidden;
+}
+.savings-hero::before {
+    content: ''; position: absolute;
+    top: -50px; right: -50px;
+    width: 160px; height: 160px;
+    background: rgba(255,255,255,0.06); border-radius: 50%;
+}
+.savings-big {
+    font-size: 48px; font-weight: 900;
+    color: #fff; letter-spacing: -3px; line-height: 1;
+}
+.savings-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,255,255,0.5);
+    margin-bottom: 4px;
+}
+.savings-sub { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 8px; }
+
+/* ─── PLATFORM GRID ───────────────────────────────────────────────── */
+.platform-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 14px;
+}
+.platform-card {
+    background: #FFFFFF; border-radius: 16px;
+    padding: 16px; border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all 0.18s ease;
+}
+.platform-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.09); transform: translateY(-1px); }
+.pc-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #94A3B8; margin-bottom: 8px; }
+.pc-value { font-size: 22px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.1; }
+.pc-delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.pc-bar   { height: 3px; background: #F1F5F9; border-radius: 2px; margin-top: 12px; overflow: hidden; }
+.pc-fill  { height: 3px; border-radius: 2px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+
+/* ─── LIST ROW ────────────────────────────────────────────────────── */
+.list-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: #FFFFFF;
+    border-radius: 14px; margin-bottom: 8px;
+    border: 1px solid rgba(0,0,0,0.04);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition: all 0.15s ease;
+    cursor: default;
+}
+.list-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+.lr-left  { flex: 1; min-width: 0; }
+.lr-title { font-size: 14px; font-weight: 600; color: #0F172A; }
+.lr-sub   { font-size: 11px; color: #94A3B8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+.lr-value { font-size: 16px; font-weight: 700; }
+.lr-pct   { font-size: 11px; font-weight: 600; color: #94A3B8; margin-top: 2px; }
+
+/* ─── SECTION LABEL ───────────────────────────────────────────────── */
+.section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #94A3B8;
+    padding: 16px 4px 8px;
+}
+
+/* ─── METRIC TILES ────────────────────────────────────────────────── */
+[data-testid="metric-container"] {
+    background: #FFFFFF !important;
+    border: 1px solid rgba(0,0,0,0.05) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+[data-testid="stMetricLabel"] p {
+    font-size: 10px !important; font-weight: 700 !important;
+    color: #94A3B8 !important; letter-spacing: 1.2px !important;
+    text-transform: uppercase !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 20px !important; font-weight: 800 !important;
+    color: #0F172A !important; letter-spacing: -0.5px !important;
+}
+[data-testid="stMetricDelta"] { font-size: 12px !important; font-weight: 600 !important; }
+
+/* ─── MROW (metrics table) ────────────────────────────────────────── */
+.mrow {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid #F8FAFC; font-size: 13px;
+}
+.mrow:last-child { border-bottom: none; }
+.mrow .lbl { color: #64748B; }
+.mrow .val { font-weight: 600; color: #0F172A; font-size: 13px; }
+
+/* ─── VERDICT ─────────────────────────────────────────────────────── */
+.verdict-wrap {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-radius: 14px;
+    margin: 14px 0;
+}
+.verdict-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; flex-shrink: 0;
+}
+.verdict-title { font-size: 16px; font-weight: 800; }
+.verdict-desc  { font-size: 12px; margin-top: 2px; opacity: 0.7; }
+
+/* ─── CHECK ROW (treino) ──────────────────────────────────────────── */
+.check-row {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 11px 0; border-bottom: 1px solid #F8FAFC;
+    transition: opacity 0.2s ease;
+}
+.check-row:last-child { border-bottom: none; }
+.check-row.done { opacity: 0.38; }
+.cr-circle {
+    width: 24px; height: 24px; flex-shrink: 0;
+    border-radius: 50%; border: 2px solid #CBD5E1;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s ease; margin-top: 1px;
+    background: transparent;
+}
+.cr-circle.done { background: #2563EB; border-color: #2563EB; }
+.cr-check { color: white; font-size: 12px; font-weight: 800; }
+.cr-name { font-size: 14px; font-weight: 600; color: #0F172A; line-height: 1.3; }
+.cr-name.done { text-decoration: line-through; color: #94A3B8; }
+.cr-series {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; margin-top: 4px;
+    letter-spacing: 0.2px;
+}
+.cr-desc { font-size: 11px; color: #94A3B8; margin-top: 3px; }
+
+/* ─── PROGRESS BAR ────────────────────────────────────────────────── */
+.prog-track {
+    height: 5px; background: #F1F5F9;
+    border-radius: 100px; overflow: hidden; margin: 10px 0 4px;
+}
+.prog-fill {
+    height: 5px; border-radius: 100px;
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── DAY CARD ────────────────────────────────────────────────────── */
+.day-card {
+    background: #FFFFFF; border-radius: 18px;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 12px; overflow: hidden;
+}
+.day-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px 12px;
+}
+.day-title { font-size: 16px; font-weight: 800; color: #0F172A; }
+.day-sub   { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+.day-badge {
+    font-size: 12px; font-weight: 700; padding: 4px 12px;
+    border-radius: 100px; letter-spacing: 0.2px;
+}
+.day-body { padding: 0 18px 16px; }
+.warmup-strip {
+    background: #F8FAFC; border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 12px;
+    font-size: 11px; color: #64748B;
+}
+.warmup-strip strong { font-weight: 700; color: #475569; margin-right: 6px; }
+
+/* ─── EDIT BANNER ─────────────────────────────────────────────────── */
+.edit-bar {
+    background: #EFF6FF; border: 1px solid #BFDBFE;
+    border-radius: 12px; padding: 12px 16px; margin-bottom: 12px;
+    font-size: 13px; font-weight: 600; color: #2563EB;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* ─── INLINE TOTAL ────────────────────────────────────────────────── */
+.total-preview {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #F8FAFC; border-radius: 10px;
+    padding: 12px 14px; margin: 8px 0;
+    font-size: 13px; color: #64748B;
+}
+.total-preview strong { font-size: 16px; font-weight: 800; color: #0F172A; }
+
+/* ─── CAT GRID ────────────────────────────────────────────────────── */
+.cat-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 0; border-bottom: 1px solid #F8FAFC;
+}
+.cat-row:last-child { border-bottom: none; }
+.cat-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.cat-name { font-size: 13px; color: #374151; flex: 1; margin-left: 10px; }
+.cat-val  { font-size: 13px; font-weight: 700; color: #0F172A; }
+.cat-pct  { font-size: 11px; color: #94A3B8; margin-left: 8px; min-width: 38px; text-align: right; }
+
+/* ─── STOCK HEADER ────────────────────────────────────────────────── */
+.stock-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 12px;
+}
+.stock-name    { font-size: 20px; font-weight: 800; color: #0F172A; letter-spacing: -0.5px; }
+.stock-meta    { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.stock-ticker  { font-size: 12px; color: #94A3B8; font-weight: 600; }
+.stock-price   { font-size: 32px; font-weight: 900; color: #0F172A; letter-spacing: -1.5px; line-height: 1; }
+.stock-change  { font-size: 13px; font-weight: 600; margin-top: 4px; }
+
+/* ─── TAG / CHIP ──────────────────────────────────────────────────── */
+.chip {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 100px; letter-spacing: 0.2px;
+}
+.chip-blue   { background: #EFF6FF; color: #2563EB; }
+.chip-grey   { background: #F1F5F9; color: #64748B; }
+.chip-green  { background: #ECFDF5; color: #059669; }
+.chip-yellow { background: #FFFBEB; color: #D97706; }
+.chip-red    { background: #FEF2F2; color: #DC2626; }
+
+/* ─── NOTE STRIP ──────────────────────────────────────────────────── */
+.note-strip {
+    background: #F0FDF4; border-left: 3px solid #10B981;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px; margin: 8px 0;
+    font-size: 12px; color: #059669;
+}
+
+/* ─── BUTTONS ─────────────────────────────────────────────────────── */
 div.stButton > button {
-    width:100% !important;
-    background:#3B82F6 !important;
-    color:white !important; font-weight:600; border-radius:8px; border:none;
-    height:2.6em; font-size:13px; letter-spacing:0.3px;
-    transition: background 0.2s !important;
+    width: 100% !important;
+    background: #2563EB !important;
+    color: #FFFFFF !important; font-weight: 700 !important;
+    border-radius: 14px !important; border: none !important;
+    height: 50px !important; font-size: 14px !important;
+    letter-spacing: 0.1px !important;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25) !important;
+    transition: all 0.15s ease !important;
 }
-div.stButton > button:hover { background:#2563EB !important; opacity:1 !important; }
-
-/* ICON BUTTONS (edit/delete) — small columns */
+div.stButton > button:hover {
+    background: #1D4ED8 !important;
+    box-shadow: 0 6px 20px rgba(37,99,235,0.35) !important;
+    transform: translateY(-1px) !important;
+    opacity: 1 !important;
+}
+div.stButton > button:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.2) !important;
+}
+/* icon buttons */
 [data-testid="column"] div.stButton > button {
-    background:#F7FAFC !important;
-    border:1px solid #E2E8F0 !important;
-    color:#A0AEC0 !important;
-    font-size:14px !important;
-    height:2.2em !important;
-    border-radius:8px !important;
-    letter-spacing:0 !important;
+    background: #FFFFFF !important; border: 1px solid #E2E8F0 !important;
+    color: #94A3B8 !important; height: 40px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    font-size: 15px !important;
 }
 [data-testid="column"] div.stButton > button:hover {
-    background:#EDF2F7 !important;
-    color:#4A5568 !important;
-    border-color:#CBD5E0 !important;
+    background: #F8FAFC !important; color: #475569 !important;
+    border-color: #CBD5E1 !important;
+    transform: none !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+}
+.btn-green div.stButton > button {
+    background: #059669 !important;
+    box-shadow: 0 2px 8px rgba(5,150,105,0.25) !important;
+}
+.btn-green div.stButton > button:hover {
+    background: #047857 !important;
+    box-shadow: 0 6px 20px rgba(5,150,105,0.3) !important;
+}
+.btn-ghost div.stButton > button {
+    background: #F8FAFC !important; color: #64748B !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: none !important;
+}
+.btn-ghost div.stButton > button:hover {
+    background: #F1F5F9 !important; transform: none !important;
+    box-shadow: none !important;
 }
 
-/* INPUTS */
-.stTextInput input {
-    background:#FFFFFF !important; color:#2D3748 !important;
-    border:1px solid #E2E8F0 !important; border-radius:8px !important;
-    font-size:14px !important; box-shadow:0 1px 2px rgba(0,0,0,0.04) !important;
+/* ─── INPUTS ──────────────────────────────────────────────────────── */
+.stTextInput input, .stNumberInput input {
+    background: #FFFFFF !important; color: #0F172A !important;
+    border: 1.5px solid #E2E8F0 !important; border-radius: 12px !important;
+    font-size: 14px !important; font-weight: 500 !important;
+    padding: 11px 14px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
 }
-.stTextInput input:focus { border-color:#3B82F6 !important; box-shadow:0 0 0 3px rgba(59,130,246,0.1) !important; }
-.stNumberInput input { background:#FFFFFF !important; color:#2D3748 !important; border:1px solid #E2E8F0 !important; border-radius:8px !important; }
-.stSelectbox > div > div { background:#FFFFFF !important; border:1px solid #E2E8F0 !important; color:#2D3748 !important; border-radius:8px !important; }
-.streamlit-expanderHeader { background:#FFFFFF !important; border:1px solid #E2E8F0 !important; border-radius:10px !important; color:#4A5568 !important; }
-.streamlit-expanderContent { background:#FAFBFC !important; border:1px solid #E2E8F0 !important; border-top:none !important; border-radius:0 0 10px 10px !important; }
-
-/* CHECKBOX — treino */
-.stCheckbox label { font-size:14px !important; color:#4A5568 !important; }
-.stCheckbox label:hover { color:#1A202C !important; }
-
-/* METRICS */
-[data-testid="metric-container"] {
-    background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px;
-    padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+.stTextInput input:focus, .stNumberInput input:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.10) !important;
 }
-[data-testid="metric-container"] label { color:#718096 !important; font-size:12px !important; }
-[data-testid="metric-container"] [data-testid="stMetricValue"] { color:#1A202C !important; font-size:1.4em !important; font-weight:700 !important; }
+.stSelectbox > div > div {
+    background: #FFFFFF !important; border: 1.5px solid #E2E8F0 !important;
+    border-radius: 12px !important; color: #0F172A !important;
+}
+label[data-testid="stWidgetLabel"] p {
+    font-size: 11px !important; font-weight: 700 !important;
+    color: #64748B !important; letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+}
 
-/* SCROLLBAR */
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background:#F5F7FA; }
-::-webkit-scrollbar-thumb { background:#CBD5E0; border-radius:4px; }
+/* ─── EXPANDER ────────────────────────────────────────────────────── */
+.streamlit-expanderHeader {
+    background: #FFFFFF !important; border: 1px solid rgba(0,0,0,0.06) !important;
+    border-radius: 14px !important; padding: 14px 18px !important;
+    font-weight: 600 !important; font-size: 14px !important;
+    color: #374151 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+.streamlit-expanderContent {
+    background: #FAFAFA !important; border: 1px solid rgba(0,0,0,0.06) !important;
+    border-top: none !important; border-radius: 0 0 14px 14px !important;
+    padding: 18px !important;
+}
+
+/* ─── CHECKBOX hidden (we build our own) ─────────────────────────── */
+.stCheckbox { display: none !important; }
+
+/* ─── SCROLLBAR ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+/* ─── ANIMATIONS ──────────────────────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.18); }
+}
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    15%  { transform: translateX(-7px); }
+    30%  { transform: translateX(7px); }
+    45%  { transform: translateX(-5px); }
+    60%  { transform: translateX(5px); }
+    75%  { transform: translateX(-3px); }
+}
+.fade-up { animation: fadeUp 0.32s cubic-bezier(.4,0,.2,1) forwards; }
+.shake   { animation: shake 0.45s cubic-bezier(.4,0,.2,1); }
+
+/* ─── EMPTY STATE ─────────────────────────────────────────────────── */
+.empty-state {
+    text-align: center; padding: 52px 20px;
+    color: #94A3B8;
+}
+.empty-state .icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state .title { font-size: 15px; font-weight: 700; color: #64748B; margin-bottom: 6px; }
+.empty-state .sub   { font-size: 13px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# DATABASE
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# DATABASE LAYER
+# ══════════════════════════════════════════════════════════════════════
 DATA_DIR = "dados"
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -151,22 +513,19 @@ PT_MONTHS = {"Jan":1,"Fev":2,"Mar":3,"Abr":4,"Mai":5,"Jun":6,
              "Jul":7,"Ago":8,"Set":9,"Out":10,"Nov":11,"Dez":12}
 
 def parse_mes(m):
-    """Convert 'Abr 25' -> sortable int like 202504"""
     try:
-        parts = str(m).strip().split()
-        mon = PT_MONTHS.get(parts[0], 0)
-        yr  = int(parts[1]) + 2000
-        return yr * 100 + mon
-    except Exception:
+        p = str(m).strip().split()
+        return (int(p[1]) + 2000) * 100 + PT_MONTHS.get(p[0], 0)
+    except:
         return 0
 
 def save_db(df, name):
     if "Mês" in df.columns and not df.empty:
         try:
             df = df.copy()
-            df["_sort"] = df["Mês"].apply(parse_mes)
-            df = df.sort_values("_sort", ascending=False).drop(columns=["_sort"])
-        except Exception:
+            df["_s"] = df["Mês"].apply(parse_mes)
+            df = df.sort_values("_s", ascending=False).drop(columns=["_s"])
+        except:
             pass
     df.to_csv(f"{DATA_DIR}/{name}.csv", index=False)
 
@@ -178,873 +537,1120 @@ def load_db(name):
     if df.empty or "Mês" not in df.columns:
         return df
     try:
-        df["_sort"] = df["Mês"].apply(parse_mes)
-        # descending: most recent first → iloc[0] = latest month (e.g. Mai)
-        df = df.sort_values("_sort", ascending=False).drop(columns=["_sort"])
-    except Exception:
+        df["_s"] = df["Mês"].apply(parse_mes)
+        df = df.sort_values("_s", ascending=False).drop(columns=["_s"])
+    except:
         pass
     return df.reset_index(drop=True)
 
 def get_months():
-    names = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+    n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
     y = datetime.now().year % 100
-    return [f"{m} {y}" for m in reversed(names)] + [f"{m} {y-1}" for m in reversed(names)]
+    return [f"{m} {y}" for m in reversed(n)] + [f"{m} {y-1}" for m in reversed(n)]
 
-DESPESA_CATS = ["Habitação","Alimentação","Transportes","Saúde","Lazer","Subscrições","Educação","Outros"]
-CAT_COLORS   = {
-    "Habitação":"#00BFFF","Alimentação":"#00E87A","Transportes":"#FFD060",
-    "Saúde":"#FF9ECD","Lazer":"#FF8C42","Subscrições":"#A78BFA",
-    "Educação":"#34D399","Outros":"#8899BB"
+DESPESA_CATS  = ["Habitação","Alimentação","Transportes","Saúde","Lazer","Subscrições","Educação","Outros"]
+CAT_ICONS     = {"Habitação":"🏠","Alimentação":"🍽","Transportes":"🚗","Saúde":"💊","Lazer":"🎮","Subscrições":"📱","Educação":"📚","Outros":"📦"}
+CAT_COLORS    = {"Habitação":"#2563EB","Alimentação":"#059669","Transportes":"#D97706","Saúde":"#EC4899","Lazer":"#7C3AED","Subscrições":"#0891B2","Educação":"#16A34A","Outros":"#6B7280"}
+
+# ══════════════════════════════════════════════════════════════════════
+# SESSION STATE
+# ══════════════════════════════════════════════════════════════════════
+_defaults = {
+    "auth": False, "pin_buf": "", "pin_shake": False,
+    "edit_pat": None, "edit_flx": None,
+    "ticker": "", "treino_edit": False,
 }
+for k, v in _defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-# ─────────────────────────────────────────────
-# SAFE GETTER
-# ─────────────────────────────────────────────
+week_key = f"w{datetime.now().isocalendar()[1]}"
+if week_key not in st.session_state:
+    st.session_state[week_key] = {}
+
+# ══════════════════════════════════════════════════════════════════════
+# FINANCE ENGINE
+# ══════════════════════════════════════════════════════════════════════
 def sg(d, *keys, default=0):
     for k in keys:
         v = d.get(k)
         if v is not None and v != "" and not (isinstance(v, float) and np.isnan(v)):
             try:
                 f = float(v)
-                if f != 0:
-                    return f
-            except Exception:
+                if f != 0: return f
+            except:
                 return v
     return default
 
-# ─────────────────────────────────────────────
-# TICKER FETCH  (root fix for yfinance ≥0.2)
-# ─────────────────────────────────────────────
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_info(symbol: str):
+def fetch_info(symbol):
     try:
-        t    = yf.Ticker(symbol)
-        info = t.info or {}
-
-        # fast_info is more reliable for price
+        t = yf.Ticker(symbol); info = t.info or {}
         try:
-            fi    = t.fast_info
-            price = (
-                getattr(fi, "last_price", None) or
-                getattr(fi, "regular_market_price", None) or
-                info.get("currentPrice") or
-                info.get("regularMarketPrice") or
-                info.get("previousClose")
-            )
-            if price:
-                info["currentPrice"] = float(price)
-        except Exception:
-            pass
-
-        # last resort: pull from history
+            fi = t.fast_info
+            p  = getattr(fi,"last_price",None) or getattr(fi,"regular_market_price",None) or info.get("currentPrice") or info.get("previousClose")
+            if p: info["currentPrice"] = float(p)
+        except: pass
         if not info.get("currentPrice"):
-            hist = t.history(period="5d")
-            if not hist.empty:
-                info["currentPrice"] = float(hist["Close"].iloc[-1])
-
-        price = info.get("currentPrice", 0)
-        name  = info.get("longName") or info.get("shortName") or ""
-
-        if price == 0 and not name:
-            return None, f"Ticker **{symbol}** não encontrado ou sem dados disponíveis."
-        if not name:
-            info["longName"] = symbol
-
+            h = t.history(period="5d")
+            if not h.empty: info["currentPrice"] = float(h["Close"].iloc[-1])
+        if not info.get("currentPrice",0) and not (info.get("longName") or info.get("shortName")):
+            return None, f"Ticker **{symbol}** não encontrado."
+        if not (info.get("longName") or info.get("shortName")): info["longName"] = symbol
         return info, None
-
     except Exception as e:
-        msg = str(e)
-        if "404" in msg or "No data" in msg.lower():
-            return None, f"Ticker **{symbol}** inválido."
-        return None, f"Erro ao carregar {symbol}: {msg}"
+        return None, f"Erro: {str(e)}"
 
-# ─────────────────────────────────────────────
-# INTRINSIC VALUE ENGINE (sector-adjusted)
-# ─────────────────────────────────────────────
 SECTOR_CFG = {
-    "Technology":             {"method":"dcf",      "dr":0.10,"tg":0.03, "cap":0.25,"label":"DCF — Free Cash Flow"},
-    "Communication Services": {"method":"dcf",      "dr":0.10,"tg":0.025,"cap":0.20,"label":"DCF — Free Cash Flow"},
-    "Healthcare":             {"method":"dcf",      "dr":0.09,"tg":0.025,"cap":0.18,"label":"DCF — Free Cash Flow"},
+    "Technology":             {"method":"dcf",      "dr":.10,"tg":.03, "cap":.25,"label":"DCF — Free Cash Flow"},
+    "Communication Services": {"method":"dcf",      "dr":.10,"tg":.025,"cap":.20,"label":"DCF — Free Cash Flow"},
+    "Healthcare":             {"method":"dcf",      "dr":.09,"tg":.025,"cap":.18,"label":"DCF — Free Cash Flow"},
     "Consumer Cyclical":      {"method":"ev_ebitda","multiple":14,              "label":"EV / EBITDA"},
     "Consumer Defensive":     {"method":"pe_rel",   "base_pe":22,               "label":"P/E Relativo"},
-    "Financial Services":     {"method":"pb_roe",                               "label":"P/B + ROE (Graham)"},
+    "Financial Services":     {"method":"pb_roe",                               "label":"P/B + ROE"},
     "Industrials":            {"method":"ev_ebitda","multiple":11,              "label":"EV / EBITDA"},
     "Basic Materials":        {"method":"ev_ebitda","multiple":8,               "label":"EV / EBITDA"},
     "Energy":                 {"method":"ev_ebitda","multiple":7,               "label":"EV / EBITDA"},
-    "Utilities":              {"method":"ddm",                                  "label":"Gordon Growth (DDM)"},
-    "Real Estate":            {"method":"ffo",                                  "label":"P / FFO (REIT)"},
+    "Utilities":              {"method":"ddm",                                  "label":"Gordon Growth"},
+    "Real Estate":            {"method":"ffo",                                  "label":"P / FFO"},
 }
 
 def intrinsic_value(info, sector):
-    cfg    = SECTOR_CFG.get(sector, {"method":"dcf","dr":0.10,"tg":0.025,"cap":0.15,"label":"DCF — Geral"})
-    method = cfg["method"]
-    shares = sg(info, "sharesOutstanding", default=1)
-    result = {"iv":0, "label":cfg["label"], "rows":[]}
-    R      = result["rows"]
+    cfg = SECTOR_CFG.get(sector, {"method":"dcf","dr":.10,"tg":.025,"cap":.15,"label":"DCF"})
+    m   = cfg["method"]; sh = sg(info,"sharesOutstanding",default=1)
+    r   = {"iv":0,"label":cfg["label"],"rows":[]}; R = r["rows"]
     try:
-        if method == "dcf":
-            dr, tg, cap = cfg.get("dr",0.10), cfg.get("tg",0.025), cfg.get("cap",0.15)
+        if m == "dcf":
+            dr,tg,cap = cfg.get("dr",.10), cfg.get("tg",.025), cfg.get("cap",.15)
             fcf = sg(info,"freeCashflow",default=0)
-            if fcf <= 0:
-                fcf = sg(info,"operatingCashflow",default=0) - abs(sg(info,"capitalExpenditures",default=0))
-            if fcf <= 0:
-                fcf = sg(info,"netIncomeToCommon",default=0)
-            if fcf <= 0 or shares <= 0: return result
-            g  = min(max((sg(info,"revenueGrowth",default=0.05) + sg(info,"earningsGrowth",default=0.05))/2, 0.03), cap)
+            if fcf<=0: fcf = sg(info,"operatingCashflow",default=0)-abs(sg(info,"capitalExpenditures",default=0))
+            if fcf<=0: fcf = sg(info,"netIncomeToCommon",default=0)
+            if fcf<=0 or sh<=0: return r
+            g  = min(max((sg(info,"revenueGrowth",default=.05)+sg(info,"earningsGrowth",default=.05))/2,.03),cap)
             pv = sum([(fcf*(1+g)**i)/(1+dr)**i for i in range(1,6)])
             tv = (fcf*(1+g)**5*(1+tg))/(dr-tg)
-            result["iv"] = max((pv + tv/(1+dr)**5)/shares, 0)
-            R += [("FCF Base",f"${fcf/1e9:.2f}B"),("Taxa Crescimento",f"{g*100:.1f}%"),
-                  ("Taxa Desconto",f"{dr*100:.0f}%"),("Terminal Growth",f"{tg*100:.1f}%")]
-
-        elif method == "ev_ebitda":
-            ebitda = sg(info,"ebitda",default=0)
-            if ebitda <= 0 or shares <= 0: return result
-            mult   = cfg.get("multiple",12)
-            equity = ebitda*mult - sg(info,"totalDebt",default=0) + sg(info,"totalCash",default=0)
-            result["iv"] = max(equity/shares, 0)
-            R += [("EBITDA",f"${ebitda/1e9:.2f}B"),("Múltiplo Setor",f"{mult}x")]
-
-        elif method == "pe_rel":
+            r["iv"] = max((pv+tv/(1+dr)**5)/sh,0)
+            R += [("FCF",f"${fcf/1e9:.2f}B"),("Crescimento",f"{g*100:.1f}%"),("Desconto",f"{dr*100:.0f}%"),("Terminal g",f"{tg*100:.1f}%")]
+        elif m == "ev_ebitda":
+            eb = sg(info,"ebitda",default=0)
+            if eb<=0 or sh<=0: return r
+            mult = cfg.get("multiple",12)
+            r["iv"] = max((eb*mult-sg(info,"totalDebt",default=0)+sg(info,"totalCash",default=0))/sh,0)
+            R += [("EBITDA",f"${eb/1e9:.2f}B"),("Múltiplo",f"{mult}×")]
+        elif m == "pe_rel":
             eps = sg(info,"trailingEps","forwardEps",default=0)
-            if eps <= 0: return result
-            adj_pe = cfg.get("base_pe",20) * (1 + sg(info,"revenueGrowth",default=0.04))
-            result["iv"] = max(eps*adj_pe, 0)
-            R += [("EPS TTM",f"${eps:.2f}"),("P/E Ajustado",f"{adj_pe:.1f}x")]
-
-        elif method == "pb_roe":
-            roe  = sg(info,"returnOnEquity",default=0.10)
-            bvps = sg(info,"bookValue",default=0)
-            if bvps <= 0: return result
-            fair = max(roe/0.10, 0.5)
-            result["iv"] = max(bvps*fair, 0)
-            R += [("Book Value/Share",f"${bvps:.2f}"),("ROE",f"{roe*100:.1f}%"),("P/B Justo",f"{fair:.2f}x")]
-
-        elif method == "ddm":
-            div = sg(info,"dividendRate",default=0)
-            if div <= 0: return result
-            result["iv"] = max((div*1.025)/(0.07-0.025), 0)
-            R += [("Dividendo Anual",f"${div:.2f}"),("r=7%, g=2.5%","Gordon Growth")]
-
-        elif method == "ffo":
-            ni  = sg(info,"netIncomeToCommon",default=0)
-            ffo = ni + sg(info,"totalAssets",default=0)*0.02
-            if ffo <= 0 or shares <= 0: return result
-            result["iv"] = max(ffo/shares*16, 0)
-            R += [("FFO/Share",f"${ffo/shares:.2f}"),("P/FFO Justo","16x")]
-
+            if eps<=0: return r
+            pe = cfg.get("base_pe",20)*(1+sg(info,"revenueGrowth",default=.04))
+            r["iv"] = max(eps*pe,0); R += [("EPS",f"${eps:.2f}"),("P/E adj",f"{pe:.1f}×")]
+        elif m == "pb_roe":
+            roe=sg(info,"returnOnEquity",default=.10); bv=sg(info,"bookValue",default=0)
+            if bv<=0: return r
+            r["iv"] = max(bv*max(roe/.10,.5),0); R += [("Book Value",f"${bv:.2f}"),("ROE",f"{roe*100:.1f}%")]
+        elif m == "ddm":
+            d=sg(info,"dividendRate",default=0)
+            if d<=0: return r
+            r["iv"] = max((d*1.025)/(0.07-0.025),0); R += [("Dividendo",f"${d:.2f}"),("Modelo","Gordon Growth")]
+        elif m == "ffo":
+            ni=sg(info,"netIncomeToCommon",default=0); ffo=ni+sg(info,"totalAssets",default=0)*.02
+            if ffo<=0 or sh<=0: return r
+            r["iv"] = max(ffo/sh*16,0); R += [("FFO/Share",f"${ffo/sh:.2f}"),("P/FFO","16×")]
     except Exception as e:
-        R.append(("Erro", str(e)))
-    return result
+        R.append(("Erro",str(e)))
+    return r
 
-# ─────────────────────────────────────────────
-# CHECKLIST + VERDICT ENGINE
-# ─────────────────────────────────────────────
 def run_checklist(info, iv, price):
-    rev_g   = sg(info,"revenueGrowth",default=0)
-    eps_g   = sg(info,"earningsGrowth",default=0)
-    margin  = sg(info,"profitMargins",default=0)
-    gross_m = sg(info,"grossMargins",default=0)
-    roe     = sg(info,"returnOnEquity",default=0)
-    roa     = sg(info,"returnOnAssets",default=0)
-    cfo     = sg(info,"operatingCashflow",default=0)
-    ni      = sg(info,"netIncomeToCommon",default=1)
-    debt_eq = sg(info,"debtToEquity",default=0)
-    cr      = sg(info,"currentRatio",default=0)
-    pe      = sg(info,"trailingPE",default=0)
-    peg     = sg(info,"pegRatio",default=0)
-    beta    = sg(info,"beta",default=1)
-    upside  = ((iv/price)-1)*100 if price > 0 and iv > 0 else 0
-    cfo_ni  = cfo/ni if ni != 0 else 0
+    rg=sg(info,"revenueGrowth",default=0); eg=sg(info,"earningsGrowth",default=0)
+    mg=sg(info,"profitMargins",default=0); gm=sg(info,"grossMargins",default=0)
+    roe=sg(info,"returnOnEquity",default=0); roa=sg(info,"returnOnAssets",default=0)
+    cfo=sg(info,"operatingCashflow",default=0); ni=sg(info,"netIncomeToCommon",default=1)
+    de=sg(info,"debtToEquity",default=0); cr=sg(info,"currentRatio",default=0)
+    pe=sg(info,"trailingPE",default=0); peg=sg(info,"pegRatio",default=0)
+    beta=sg(info,"beta",default=1)
+    up=((iv/price)-1)*100 if price>0 and iv>0 else 0
+    cn=cfo/ni if ni!=0 else 0
 
-    checks = [
-        ("Crescimento",   "Receita YoY > 7%",       rev_g > 0.07,       f"{rev_g*100:.1f}%"),
-        ("Crescimento",   "Lucro YoY > 9%",          eps_g > 0.09,       f"{eps_g*100:.1f}%"),
-        ("Rentabilidade", "Margem Líquida > 10%",    margin > 0.10,      f"{margin*100:.1f}%"),
-        ("Rentabilidade", "Margem Bruta > 40%",      gross_m > 0.40,     f"{gross_m*100:.1f}%"),
-        ("Rentabilidade", "ROE > 15%",               roe > 0.15,         f"{roe*100:.1f}%"),
-        ("Rentabilidade", "ROA > 5%",                roa > 0.05,         f"{roa*100:.1f}%"),
-        ("Qualidade",     "CFO / Net Income > 80%",  cfo_ni > 0.80,      f"{cfo_ni*100:.1f}%"),
-        ("Qualidade",     "Dívida/Equity < 1.5",     0 < debt_eq < 150,  f"{debt_eq/100:.2f}x" if debt_eq>1 else f"{debt_eq:.2f}x"),
-        ("Qualidade",     "Current Ratio > 1.2",     cr > 1.2,           f"{cr:.2f}x"),
-        ("Valuation",     "P/E < 30",                0 < pe < 30,        f"{pe:.1f}x" if pe>0 else "N/A"),
-        ("Valuation",     "PEG < 1.5",               0 < peg < 1.5,      f"{peg:.2f}" if peg>0 else "N/A"),
-        ("Valuation",     "Upside DCF > 15%",        upside > 15,        f"{upside:+.1f}%" if iv>0 else "N/A"),
-        ("Risco",         "Beta < 1.5",              beta < 1.5,         f"{beta:.2f}"),
+    checks=[
+        ("Crescimento","Receita YoY > 7%",   rg>0.07,  f"{rg*100:.1f}%"),
+        ("Crescimento","Lucro YoY > 9%",      eg>0.09,  f"{eg*100:.1f}%"),
+        ("Margem",     "Margem Líq. > 10%",   mg>0.10,  f"{mg*100:.1f}%"),
+        ("Margem",     "Margem Bruta > 40%",  gm>0.40,  f"{gm*100:.1f}%"),
+        ("Retorno",    "ROE > 15%",            roe>0.15, f"{roe*100:.1f}%"),
+        ("Retorno",    "ROA > 5%",             roa>0.05, f"{roa*100:.1f}%"),
+        ("Qualidade",  "CFO/NetInc > 80%",    cn>0.80,  f"{cn*100:.1f}%"),
+        ("Qualidade",  "Dívida/Eq. < 1.5",    0<de<150, f"{de/100:.2f}×" if de>1 else f"{de:.2f}×"),
+        ("Qualidade",  "Current Ratio > 1.2", cr>1.2,   f"{cr:.2f}×"),
+        ("Valuation",  "P/E < 30",            0<pe<30,  f"{pe:.1f}×" if pe>0 else "N/A"),
+        ("Valuation",  "PEG < 1.5",           0<peg<1.5,f"{peg:.2f}" if peg>0 else "N/A"),
+        ("Valuation",  "Upside > 15%",        up>15,    f"{up:+.1f}%" if iv>0 else "N/A"),
+        ("Risco",      "Beta < 1.5",          beta<1.5, f"{beta:.2f}"),
     ]
-    score = sum(1 for _,_,p,_ in checks if p)
-    n     = len(checks)
-    qs    = sum(1 for c,_,p,_ in checks if c in ("Rentabilidade","Qualidade") and p)
-    vs    = sum(1 for c,_,p,_ in checks if c == "Valuation" and p)
+    score=sum(1 for _,_,p,_ in checks if p); n=len(checks)
+    qs=sum(1 for c,_,p,_ in checks if c in ("Margem","Retorno","Qualidade") and p)
+    vs=sum(1 for c,_,p,_ in checks if c=="Valuation" and p)
+    if score>=10 and vs>=2:   return checks,score,n,"APROVADA","#059669","#ECFDF5","#6EE7B7","✓","Empresa de alta qualidade com valuation atrativo."
+    elif score>=7 and qs>=3:  return checks,score,n,"INDECISA","#D97706","#FFFBEB","#FCD34D","~","Boas fundações. Alguns critérios em falta."
+    else:                     return checks,score,n,"REJEITADA","#DC2626","#FEF2F2","#FCA5A5","✕","Não cumpre os critérios mínimos."
 
-    if score >= 10 and vs >= 2:
-        return checks,score,n,"APROVADA","#00E87A","#00E87A18","#00E87A44","Empresa de alta qualidade com valuation atrativo. Candidata a investimento."
-    elif score >= 7 and qs >= 3:
-        return checks,score,n,"INDECISA","#FFD060","#FFD06018","#FFD06044","Boas fundações mas alguns critérios não satisfeitos. Monitorizar."
-    else:
-        return checks,score,n,"REJEITADA","#FF4D6A","#FF4D6A18","#FF4D6A44","Não cumpre os critérios mínimos de qualidade ou valuation. Evitar."
+# ══════════════════════════════════════════════════════════════════════
+# TRAINING PLAN
+# ══════════════════════════════════════════════════════════════════════
+TREINO = {
+    "Segunda": {
+        "sub": "Base & Estabilidade", "cor": "#2563EB",
+        "warmup": ["Círculos de anca","Rotação torácica","10 agachamentos lentos","10 scapular push-ups"],
+        "ex": [
+            ("Goblet Squat",                   "3 × 10-12",      "Progressão lenta · controlo e profundidade"),
+            ("Romanian Deadlift",               "3 × 10",         "Kettlebell ou barra · alongamento posterior"),
+            ("Passadas Atrás",                  "3 × 8 cada",     "Excelente para estabilidade da anca"),
+            ("Prancha Frontal",                 "3 × 30-45s",     ""),
+            ("Side Plank",                      "2 × cada lado",  ""),
+        ],
+        "nota": "Reforça anca e core — essencial para a tua estrutura."
+    },
+    "Quarta": {
+        "sub": "Ombros & Estabilidade Superior", "cor": "#7C3AED",
+        "warmup": ["Mobilidade ombro","Elástico — rotação externa"],
+        "ex": [
+            ("Overhead Press",     "3 × 10",       "Halter ou máquina · controlado"),
+            ("Elevações Laterais", "3 × 12-15",    ""),
+            ("Face Pulls",         "3 × 12-15",    "Fundamental para proteger o ombro"),
+            ("Remo Unilateral",    "3 × 10 cada",  "Ótimo para estabilidade do tronco"),
+            ("Hiperextensão",      "3 × 12",       ""),
+        ],
+        "nota": ""
+    },
+    "Sexta": {
+        "sub": "Peito & Costas — Principal", "cor": "#059669",
+        "warmup": [],
+        "ex": [
+            ("Chest Press",             "3 × 12/10/8",          "Progressão de carga"),
+            ("Remo Máquina",            "3 × 12/10/8",          ""),
+            ("Press Inclinado",         "3 × 10/8/6",           ""),
+            ("Dorsal Máquina / Barras", "3 × 10-12",            ""),
+            ("Finisher",                "Flexões ou 5-8 barras","Opcional"),
+        ],
+        "nota": "Podes usar a pirâmide progressiva aqui."
+    },
+}
 
-# ─────────────────────────────────────────────
-# AUTH
-# ─────────────────────────────────────────────
-if "auth" not in st.session_state:
-    st.session_state.auth = False
+# ══════════════════════════════════════════════════════════════════════
+# PIN AUTH — Custom HTML keypad rendered via st.components
+# ══════════════════════════════════════════════════════════════════════
+CORRECT_PIN = "1214"
+
+def render_pin_screen(buf: str, shake: bool):
+    n     = len(buf)
+    dots  = "".join([
+        f'<div class="dot {"filled" if i < n else ""}"></div>'
+        for i in range(4)
+    ])
+    shake_cls = "shake" if shake else ""
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * {{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color: transparent; }}
+  body {{
+    font-family:'Inter',-apple-system,sans-serif;
+    background:#FFFFFF;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    min-height:100vh; padding:40px 32px;
+    -webkit-font-smoothing:antialiased;
+  }}
+  .logo {{
+    font-size:28px; font-weight:900; color:#0F172A;
+    letter-spacing:-1px; margin-bottom:8px;
+  }}
+  .logo em {{ color:#2563EB; font-style:normal; }}
+  .subtitle {{
+    font-size:14px; color:#94A3B8; font-weight:400;
+    margin-bottom:52px; text-align:center;
+  }}
+  .dots {{
+    display:flex; gap:18px; margin-bottom:52px;
+    justify-content:center;
+    animation: {shake_cls} 0.45s cubic-bezier(.4,0,.2,1);
+  }}
+  .dot {{
+    width:15px; height:15px; border-radius:50%;
+    border:2px solid #CBD5E1; background:transparent;
+    transition:all 0.14s cubic-bezier(.4,0,.2,1);
+  }}
+  .dot.filled {{
+    background:#0F172A; border-color:#0F172A;
+    transform:scale(1.12);
+  }}
+  .dot.error {{
+    background:#EF4444; border-color:#EF4444;
+  }}
+  @keyframes shake {{
+    0%,100% {{ transform:translateX(0); }}
+    15%  {{ transform:translateX(-8px); }}
+    30%  {{ transform:translateX(8px); }}
+    45%  {{ transform:translateX(-5px); }}
+    60%  {{ transform:translateX(5px); }}
+    75%  {{ transform:translateX(-3px); }}
+  }}
+  .keypad {{
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:14px; width:100%; max-width:300px;
+  }}
+  .key {{
+    width:80px; height:80px; margin:0 auto;
+    border-radius:50%;
+    background:#F8FAFC;
+    border:1.5px solid #F1F5F9;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    cursor:pointer;
+    box-shadow:0 2px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    transition:all 0.10s cubic-bezier(.4,0,.2,1);
+    user-select:none; -webkit-user-select:none;
+    position:relative; overflow:hidden;
+  }}
+  .key:active {{
+    background:#E2E8F0;
+    transform:scale(0.92);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04);
+  }}
+  .key .num {{
+    font-size:24px; font-weight:500; color:#0F172A;
+    line-height:1;
+  }}
+  .key .sub {{
+    font-size:8px; font-weight:700; color:#94A3B8;
+    letter-spacing:1.5px; margin-top:3px;
+    text-transform:uppercase;
+  }}
+  .key.empty {{ background:transparent; border-color:transparent; box-shadow:none; cursor:default; }}
+  .key.empty:active {{ transform:none; background:transparent; }}
+  .key.del {{ background:transparent; border-color:transparent; box-shadow:none; }}
+  .key.del .num {{ font-size:20px; color:#64748B; }}
+  .key.del:active {{ background:#F1F5F9; }}
+  .key.zero .num {{ font-size:24px; }}
+  .error-msg {{
+    margin-top:24px; height:20px;
+    font-size:13px; font-weight:600; color:#EF4444;
+    text-align:center; opacity:{'1' if shake else '0'};
+    transition:opacity 0.2s;
+  }}
+  /* ripple effect */
+  .ripple {{
+    position:absolute; border-radius:50%;
+    background:rgba(0,0,0,0.08);
+    transform:scale(0); animation:ripple 0.4s linear;
+    pointer-events:none;
+  }}
+  @keyframes ripple {{
+    to {{ transform:scale(4); opacity:0; }}
+  }}
+</style>
+</head>
+<body>
+  <div class="logo">F<em>|</em>QUANT</div>
+  <div class="subtitle">Introduce o teu PIN para continuar</div>
+  <div class="dots {shake_cls}" id="dots">{dots}</div>
+  <div class="keypad" id="keypad">
+    <div class="key" data-val="1" onclick="press(this,'1')"><span class="num">1</span></div>
+    <div class="key" data-val="2" onclick="press(this,'2')"><span class="num">2</span><span class="sub">ABC</span></div>
+    <div class="key" data-val="3" onclick="press(this,'3')"><span class="num">3</span><span class="sub">DEF</span></div>
+    <div class="key" data-val="4" onclick="press(this,'4')"><span class="num">4</span><span class="sub">GHI</span></div>
+    <div class="key" data-val="5" onclick="press(this,'5')"><span class="num">5</span><span class="sub">JKL</span></div>
+    <div class="key" data-val="6" onclick="press(this,'6')"><span class="num">6</span><span class="sub">MNO</span></div>
+    <div class="key" data-val="7" onclick="press(this,'7')"><span class="num">7</span><span class="sub">PQRS</span></div>
+    <div class="key" data-val="8" onclick="press(this,'8')"><span class="num">8</span><span class="sub">TUV</span></div>
+    <div class="key" data-val="9" onclick="press(this,'9')"><span class="num">9</span><span class="sub">WXYZ</span></div>
+    <div class="key empty"></div>
+    <div class="key zero" data-val="0" onclick="press(this,'0')"><span class="num">0</span></div>
+    <div class="key del" onclick="pressKey('DEL')"><span class="num">⌫</span></div>
+  </div>
+  <div class="error-msg">PIN incorreto. Tenta novamente.</div>
+
+<script>
+  var buf = "{buf}";
+
+  function rippleEffect(el, e) {{
+    var r = document.createElement('span');
+    r.className = 'ripple';
+    var rect = el.getBoundingClientRect();
+    var size = Math.max(rect.width, rect.height);
+    r.style.width = r.style.height = size + 'px';
+    r.style.left = (e.clientX - rect.left - size/2) + 'px';
+    r.style.top  = (e.clientY - rect.top  - size/2) + 'px';
+    el.appendChild(r);
+    setTimeout(function(){{ r.remove(); }}, 400);
+  }}
+
+  function updateDots() {{
+    var dots = document.querySelectorAll('.dot');
+    dots.forEach(function(d, i) {{ d.classList.toggle('filled', i < buf.length); }});
+  }}
+
+  function pressKey(val) {{
+    if (val === 'DEL') {{
+      buf = buf.slice(0,-1);
+      updateDots();
+      window.parent.postMessage({{type:'pin',action:'del'}}, '*');
+    }}
+  }}
+
+  function press(el, val) {{
+    if (buf.length >= 4) return;
+    buf += val;
+    updateDots();
+    // haptic on mobile
+    if (navigator.vibrate) navigator.vibrate(8);
+    window.parent.postMessage({{type:'pin',action:'digit',val:val}}, '*');
+  }}
+
+  document.querySelectorAll('.key:not(.empty):not(.del)').forEach(function(k) {{
+    k.addEventListener('mousedown', function(e) {{ rippleEffect(k, e); }});
+    k.addEventListener('touchstart', function(e) {{ rippleEffect(k, e.touches[0]); }}, {{passive:true}});
+  }});
+</script>
+</body>
+</html>
+"""
+    return html
+
 
 if not st.session_state.auth:
-    st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">PERSONAL TERMINAL</div></div>', unsafe_allow_html=True)
-    _, col, _ = st.columns([1,1.2,1])
-    with col:
-        st.markdown("<br>", unsafe_allow_html=True)
-        key = st.text_input("ACCESS KEY", type="password", placeholder="••••••")
-        if st.button("UNLOCK →"):
-            if key == "1214":
-                st.session_state.auth = True
-                st.rerun()
-            else:
-                st.error("Chave incorreta.")
+    components.html(
+        render_pin_screen(st.session_state.pin_buf, st.session_state.pin_shake),
+        height=680, scrolling=False
+    )
+
+    # Invisible Streamlit buttons that JS messages trigger via query params
+    # We use a hidden text input to receive the PIN
+    pin_val = st.text_input("pin_hidden", value="", key="pin_hidden_input", label_visibility="collapsed")
+
+    # Fallback keypad using Streamlit buttons (visible, styled as PIN keys)
+    st.markdown("""
+        <style>
+        /* Override only for PIN screen buttons */
+        section[data-testid="stMain"] div.stButton > button {
+            height: 72px !important;
+            border-radius: 50% !important;
+            width: 72px !important;
+            font-size: 22px !important;
+            font-weight: 500 !important;
+            background: #F8FAFC !important;
+            border: 1.5px solid #F1F5F9 !important;
+            color: #0F172A !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
+            padding: 0 !important;
+            letter-spacing: 0 !important;
+            display: block !important;
+            margin: 0 auto !important;
+        }
+        section[data-testid="stMain"] div.stButton > button:hover {
+            background: #E2E8F0 !important;
+            transform: scale(0.94) !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    buf = st.session_state.pin_buf
+    shake = st.session_state.pin_shake
+    n = len(buf)
+
+    # Header
+    dot_css = "".join([
+        f'<div style="width:14px;height:14px;border-radius:50%;border:2px solid {"#EF4444" if shake else "#CBD5E1"};background:{"#EF4444" if shake else "#0F172A" if i<n else "transparent"};transition:all 0.14s ease;"></div>'
+        for i in range(4)
+    ])
+    st.markdown(f"""
+        <div style="text-align:center; padding:40px 0 10px;">
+            <div style="font-size:28px;font-weight:900;color:#0F172A;letter-spacing:-1px;margin-bottom:6px;">F<span style="color:#2563EB;">|</span>QUANT</div>
+            <div style="font-size:14px;color:#94A3B8;margin-bottom:44px;">Introduce o teu PIN para continuar</div>
+            <div style="display:flex;gap:18px;justify-content:center;margin-bottom:44px;">
+                {dot_css}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Keypad rows
+    keymap = [
+        [("1","1"), ("2","2"), ("3","3")],
+        [("4","4"), ("5","5"), ("6","6")],
+        [("7","7"), ("8","8"), ("9","9")],
+        [("","_"),  ("0","0"), ("⌫","del")],
+    ]
+
+    for row in keymap:
+        cols = st.columns([1,1,1], gap="small")
+        for col, (label, val) in zip(cols, row):
+            with col:
+                if val == "_":
+                    st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
+                    continue
+                if st.button(label, key=f"pk_{val}"):
+                    if val == "del":
+                        st.session_state.pin_buf = buf[:-1]
+                        st.session_state.pin_shake = False
+                    else:
+                        new = buf + val
+                        if len(new) <= 4:
+                            st.session_state.pin_buf = new
+                            st.session_state.pin_shake = False
+                            if len(new) == 4:
+                                if new == CORRECT_PIN:
+                                    st.session_state.auth = True
+                                    st.session_state.pin_buf = ""
+                                    st.session_state.pin_shake = False
+                                else:
+                                    st.session_state.pin_shake = True
+                                    st.session_state.pin_buf = ""
+                    st.rerun()
+
+    if shake:
+        st.markdown('<div style="text-align:center;color:#EF4444;font-size:13px;font-weight:600;margin-top:16px;">PIN incorreto. Tenta novamente.</div>', unsafe_allow_html=True)
+
     st.stop()
 
-# ─────────────────────────────────────────────
-# MAIN HEADER
-# ─────────────────────────────────────────────
-st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">PERSONAL TERMINAL</div></div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["PATRIMÓNIO", "FLUXO DE CAIXA", "PLANO TREINO", "ANÁLISE DE AÇÕES"])
+# ══════════════════════════════════════════════════════════════════════
+# APP SHELL
+# ══════════════════════════════════════════════════════════════════════
+now = datetime.now()
+day_names = {0:"Segunda",1:"Terça",2:"Quarta",3:"Quinta",4:"Sexta",5:"Sábado",6:"Domingo"}
+today_name = day_names[now.weekday()]
 
-# ══════════════════════════════════════════════════════════════════
-# TAB 1 — PATRIMÓNIO
-# ══════════════════════════════════════════════════════════════════
+st.markdown(f"""
+    <div class="topbar">
+        <div class="topbar-brand">F<em>|</em>QUANT</div>
+        <div class="topbar-date">{today_name}, {now.strftime("%-d %b")}</div>
+    </div>
+""", unsafe_allow_html=True)
+
+tab1, tab2, tab3, tab4 = st.tabs(["Património", "Fluxo", "Treino", "Análise"])
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ▌TAB 1 — PATRIMÓNIO
+# ══════════════════════════════════════════════════════════════════════
 with tab1:
     df_p = load_db("patrimonio")
 
-    # ── session state for inline edit ──────────────────────────────────
-    if "edit_pat_idx" not in st.session_state:
-        st.session_state.edit_pat_idx = None
+    # ── Hero ──────────────────────────────────────────────────────────
+    if not df_p.empty:
+        tot   = float(df_p["Total"].iloc[0])
+        prev  = float(df_p["Total"].iloc[1]) if len(df_p) > 1 else tot
+        dlt   = tot - prev
+        dpct  = (dlt / prev * 100) if prev > 0 else 0
+        sign  = "+" if dlt >= 0 else ""
+        arrow = "↑" if dlt >= 0 else "↓"
+        pill_cls = "up" if dlt >= 0 else "down"
 
-    # ── Performance por Carteira ────────────────────────────────────────
-    if len(df_p) >= 2:
-        # df_p is sorted descending: iloc[0]=most recent, iloc[1]=previous
-        tot    = float(df_p["Total"].iloc[0]) if not df_p.empty else 0
-        # iloc[0] = mais recente (Maio), iloc[1] = anterior (Abril)
-        # d = Maio - Abril = +400 se subiu
+        st.markdown(f"""
+            <div class="hero fade-up">
+                <div class="hero-eyebrow">Total Investido</div>
+                <div class="hero-amount">{tot:,.0f}<sup>EUR</sup></div>
+                <div class="hero-delta">
+                    {arrow}
+                    <span class="hero-pill {pill_cls}">{sign}{dlt:,.0f} € &nbsp;·&nbsp; {sign}{dpct:.1f}%</span>
+                    <span style="font-size:11px; opacity:0.5;">vs mês anterior</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # ── Platform grid ─────────────────────────────────────────────
+        st.markdown('<div class="section-label">Carteiras</div>', unsafe_allow_html=True)
         latest = df_p.iloc[0]
-        prev_r = df_p.iloc[1]
-        st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:8px;">PERFORMANCE POR CARTEIRA</div>', unsafe_allow_html=True)
-        perf_cols = st.columns(4)
-        for idx, (cn, label, color) in enumerate([("T212","Trading 212","#00BFFF"),("IBKR","IBKR","#FFD060"),("CRY","Crypto","#FF8C42"),("PPR","PPR / Outros","#A78BFA")]):
-            if cn in df_p.columns:
-                cur = float(latest.get(cn, 0) or 0)   # e.g. Abril
-                prv = float(prev_r.get(cn, 0) or 0)   # e.g. Março
-                d   = cur - prv                         # +320 se subiu
-                dp  = (d/prv*100) if prv > 0 else 0
-                s   = "+" if d >= 0 else ""
-                dc2 = "#00E87A" if d >= 0 else "#FF4D6A"
-                pct = (cur/tot*100) if tot > 0 else 0
-                with perf_cols[idx]:
-                    st.markdown(f"""
-                        <div class="card" style="text-align:center; border-top:3px solid {color}; padding:14px 12px;">
-                            <div style="font-size:10px; color:#556080; letter-spacing:2px; margin-bottom:8px;">{label.upper()}</div>
-                            <div style="font-size:1.25em; font-weight:700; font-family:'Space Mono',monospace; color:{color};">{cur:,.0f}€</div>
-                            <div style="font-size:12px; color:{dc2}; margin-top:4px;">{s}{d:,.0f}€ ({s}{dp:.1f}%)</div>
-                            <div style="font-size:11px; color:#304060; margin-top:4px;">{pct:.1f}% do total</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+        prev_r = df_p.iloc[1] if len(df_p) > 1 else latest
+        platforms = [("T212","Trading 212","#2563EB"), ("IBKR","IBKR","#059669"),
+                     ("CRY","Crypto","#D97706"),       ("PPR","PPR","#7C3AED")]
 
-    # ── Add Record ──────────────────────────────────────────────────────
-    st.markdown("<br>", unsafe_allow_html=True)
-    with st.expander("Adicionar Registo"):
-        m     = st.selectbox("Mês", get_months(), key="m_pat")
-        c1,c2 = st.columns(2)
+        st.markdown('<div class="platform-grid">', unsafe_allow_html=True)
+        for cn, label, color in platforms:
+            if cn not in df_p.columns: continue
+            cur = float(latest.get(cn, 0) or 0)
+            prv = float(prev_r.get(cn, 0) or 0)
+            d   = cur - prv
+            dp  = (d / prv * 100) if prv > 0 else 0
+            s   = "+" if d >= 0 else ""
+            dc  = "#059669" if d >= 0 else "#DC2626"
+            bw  = int(cur / tot * 100) if tot > 0 else 0
+            st.markdown(f"""
+                <div class="platform-card">
+                    <div class="pc-label">{label}</div>
+                    <div class="pc-value" style="color:{color};">{cur:,.0f}€</div>
+                    <div class="pc-delta" style="color:{dc};">{s}{d:,.0f}€ &nbsp;·&nbsp; {s}{dp:.1f}%</div>
+                    <div class="pc-bar"><div class="pc-fill" style="width:{bw}%;background:{color};"></div></div>
+                </div>
+            """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    else:
+        st.markdown("""
+            <div class="empty-state">
+                <div class="icon">◈</div>
+                <div class="title">Sem dados de patrimônio</div>
+                <div class="sub">Adiciona o teu primeiro registo abaixo</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # ── Add record ────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Novo Registo</div>', unsafe_allow_html=True)
+    with st.expander("Adicionar mês"):
+        m = st.selectbox("Mês", get_months(), key="m_pat")
+        c1, c2 = st.columns(2)
         v1 = c1.number_input("Trading 212 (€)", min_value=0.0, format="%.2f", key="v1")
         v2 = c2.number_input("IBKR (€)",         min_value=0.0, format="%.2f", key="v2")
         v3 = c1.number_input("Crypto (€)",        min_value=0.0, format="%.2f", key="v3")
-        v4 = c2.number_input("Outros / PPR (€)",  min_value=0.0, format="%.2f", key="v4")
-        if st.button("GRAVAR PATRIMÓNIO"):
-            row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":v1+v2+v3+v4}])
+        v4 = c2.number_input("PPR / Outros (€)",  min_value=0.0, format="%.2f", key="v4")
+        tot_inp = v1 + v2 + v3 + v4
+        st.markdown(f"""
+            <div class="total-preview">
+                <span>Total do mês</span>
+                <strong>{tot_inp:,.2f} €</strong>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("Gravar Património", key="btn_pat"):
+            row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":tot_inp}])
             save_db(pd.concat([df_p, row], ignore_index=True), "patrimonio")
-            st.cache_data.clear()
-            st.success("Gravado.")
-            st.rerun()
+            st.cache_data.clear(); st.rerun()
 
-    # ── History with edit + delete ───────────────────────────────────────
-    st.markdown('<div class="sec-title" style="padding-left:4px; margin-top:4px;">HISTÓRICO</div>', unsafe_allow_html=True)
-
-    for i, r in df_p.iterrows():
-        is_editing = st.session_state.edit_pat_idx == i
-
-        if is_editing:
-            # ── EDIT MODE ─────────────────────────────────────────────
-            st.markdown(f"""
-                <div style="background:#0D1219; border:1px solid #00BFFF44; border-radius:10px; padding:16px 20px; margin-bottom:4px;">
-                    <div style="font-size:10px; color:#00BFFF; letter-spacing:3px; margin-bottom:12px; font-family:'Space Mono',monospace;">A EDITAR — {r["Mês"]}</div>
-                </div>
-            """, unsafe_allow_html=True)
-            ec1, ec2 = st.columns(2)
-            e1 = ec1.number_input("Trading 212 (€)", value=float(r.get("T212",0) or 0), format="%.2f", key=f"e1_{i}")
-            e2 = ec2.number_input("IBKR (€)",         value=float(r.get("IBKR",0) or 0), format="%.2f", key=f"e2_{i}")
-            e3 = ec1.number_input("Crypto (€)",        value=float(r.get("CRY",0)  or 0), format="%.2f", key=f"e3_{i}")
-            e4 = ec2.number_input("Outros / PPR (€)",  value=float(r.get("PPR",0)  or 0), format="%.2f", key=f"e4_{i}")
-            sb1, sb2 = st.columns(2)
-            if sb1.button("Guardar", key=f"esave_{i}"):
-                df_p.at[i,"T212"]  = e1
-                df_p.at[i,"IBKR"]  = e2
-                df_p.at[i,"CRY"]   = e3
-                df_p.at[i,"PPR"]   = e4
-                df_p.at[i,"Total"] = e1+e2+e3+e4
-                save_db(df_p, "patrimonio")
-                st.session_state.edit_pat_idx = None
-                st.rerun()
-            if sb2.button("Cancelar", key=f"ecancel_{i}"):
-                st.session_state.edit_pat_idx = None
-                st.rerun()
-        else:
-            # ── VIEW MODE ─────────────────────────────────────────────
-            bk = f'T212: {float(r.get("T212",0) or 0):,.0f}€ · IBKR: {float(r.get("IBKR",0) or 0):,.0f}€ · Crypto: {float(r.get("CRY",0) or 0):,.0f}€ · PPR: {float(r.get("PPR",0) or 0):,.0f}€'
-            c_card, c_edit, c_del = st.columns([10, 1, 1])
-            with c_card:
-                st.markdown(f"""
-                    <div class="card">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
-                            <span class="green" style="font-family:'Space Mono',monospace; font-size:1.1em; font-weight:700;">{float(r["Total"]):,.2f} €</span>
+    # ── History ───────────────────────────────────────────────────────
+    if not df_p.empty:
+        st.markdown('<div class="section-label">Histórico</div>', unsafe_allow_html=True)
+        for i, r in df_p.iterrows():
+            if st.session_state.edit_pat == i:
+                st.markdown('<div class="edit-bar">✏ A editar registo</div>', unsafe_allow_html=True)
+                ec1, ec2 = st.columns(2)
+                e1 = ec1.number_input("Trading 212", value=float(r.get("T212",0) or 0), format="%.2f", key=f"ep1_{i}")
+                e2 = ec2.number_input("IBKR",        value=float(r.get("IBKR",0) or 0), format="%.2f", key=f"ep2_{i}")
+                e3 = ec1.number_input("Crypto",      value=float(r.get("CRY",0)  or 0), format="%.2f", key=f"ep3_{i}")
+                e4 = ec2.number_input("PPR",         value=float(r.get("PPR",0)  or 0), format="%.2f", key=f"ep4_{i}")
+                sb1, sb2 = st.columns(2)
+                with sb1:
+                    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
+                    if st.button("Guardar", key=f"eps_{i}"):
+                        df_p.at[i,"T212"]=e1; df_p.at[i,"IBKR"]=e2
+                        df_p.at[i,"CRY"]=e3;  df_p.at[i,"PPR"]=e4
+                        df_p.at[i,"Total"]=e1+e2+e3+e4
+                        save_db(df_p, "patrimonio"); st.session_state.edit_pat = None; st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                with sb2:
+                    st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
+                    if st.button("Cancelar", key=f"epc_{i}"):
+                        st.session_state.edit_pat = None; st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                sub = f'T212 {float(r.get("T212",0) or 0):,.0f} · IBKR {float(r.get("IBKR",0) or 0):,.0f} · Crypto {float(r.get("CRY",0) or 0):,.0f} · PPR {float(r.get("PPR",0) or 0):,.0f}'
+                cc, ce, cd = st.columns([10, 1, 1])
+                with cc:
+                    st.markdown(f"""
+                        <div class="list-row">
+                            <div class="lr-left">
+                                <div class="lr-title">{r["Mês"]}</div>
+                                <div class="lr-sub">{sub}</div>
+                            </div>
+                            <div class="lr-right">
+                                <div class="lr-value">{float(r["Total"]):,.0f}€</div>
+                            </div>
                         </div>
-                        <div style="font-size:11px; color:#304060; margin-top:6px;">{bk}</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            with c_edit:
-                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-                if st.button("✏️", key=f"edit_{i}", help="Editar"):
-                    st.session_state.edit_pat_idx = i
-                    st.rerun()
-            with c_del:
-                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"dp_{i}", help="Apagar"):
-                    save_db(df_p.drop(i).reset_index(drop=True), "patrimonio")
-                    st.rerun()
+                    """, unsafe_allow_html=True)
+                with ce:
+                    if st.button("✏️", key=f"pe_{i}"):
+                        st.session_state.edit_pat = i; st.rerun()
+                with cd:
+                    if st.button("🗑", key=f"pd_{i}"):
+                        save_db(df_p.drop(i).reset_index(drop=True), "patrimonio"); st.rerun()
 
-# ══════════════════════════════════════════════════════════════════
-# TAB 2 — FLUXO DE CAIXA
-# ══════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════
+# ▌TAB 2 — FLUXO DE CAIXA
+# ══════════════════════════════════════════════════════════════════════
 with tab2:
     df_f    = load_db("poupanca")
     df_desp = load_db("despesas")
 
-    # ── Summary ─────────────────────────────────────────────────────────
+    # ── Savings hero ──────────────────────────────────────────────────
     if not df_f.empty and "Entradas" in df_f.columns:
-        te = float(df_f["Entradas"].sum())
-        ts = float(df_f["Saidas"].sum()) if "Saidas" in df_f.columns else 0
-        tn = te - ts
-        avg_monthly = tn / len(df_f) if len(df_f) > 0 else 0
-        months_left = 12 - datetime.now().month
-        proj_extra  = avg_monthly * months_left
-
-        c1,c2,c3,c4 = st.columns(4)
-        c1.metric("Total Entradas",   f"{te:,.0f} €")
-        c2.metric("Total Saídas",     f"{ts:,.0f} €")
-        c3.metric("Total Poupado",    f"{tn:,.0f} €", delta=f"{tn/te*100:.1f}% taxa" if te>0 else "")
-        c4.metric("Projeção Fim Ano", f"+{proj_extra:,.0f} €", delta=f"{months_left} meses restantes")
-
-        # Taxa média de poupança
-        if te > 0:
-            taxa_m = tn/te*100
-            bc     = "#00E87A" if taxa_m >= 20 else "#FFD060" if taxa_m >= 10 else "#FF4D6A"
-            bw     = min(int(taxa_m), 100)
-            tip    = "🟢 Excelente! Acima de 20%" if taxa_m >= 20 else "🟡 Razoável. Tenta chegar a 20%" if taxa_m >= 10 else "🔴 Abaixo do ideal. Objetivo: 10%+"
-            st.markdown(f"""
-                <div class="card" style="margin-top:16px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="font-size:12px; color:#8899BB; letter-spacing:1px;">TAXA DE POUPANÇA MÉDIA</span>
-                        <span style="font-family:'Space Mono',monospace; color:{bc}; font-weight:700;">{taxa_m:.1f}%</span>
-                    </div>
-                    <div style="background:#111720; border-radius:20px; height:8px;">
-                        <div style="width:{bw}%; height:8px; border-radius:20px; background:{bc};"></div>
-                    </div>
-                    <div style="font-size:11px; color:#304060; margin-top:8px;">{tip}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-    # ── Categoria Breakdown ──────────────────────────────────────────────
-    if not df_desp.empty and "Categoria" in df_desp.columns:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="sec-title" style="padding-left:4px;">DESPESAS POR CATEGORIA (ACUMULADO)</div>', unsafe_allow_html=True)
-        cat_totals  = df_desp[df_desp["Categoria"] != "_total_"].groupby("Categoria")["Saidas"].sum().sort_values(ascending=False)
-        total_saidas = cat_totals.sum()
-        if total_saidas > 0:
-            cat_cols = st.columns(min(len(cat_totals), 4))
-            for idx, (cat, val) in enumerate(cat_totals.items()):
-                color = CAT_COLORS.get(cat, "#8899BB")
-                pct   = (val/total_saidas*100)
-                with cat_cols[idx % 4]:
-                    st.markdown(f"""
-                        <div class="card" style="text-align:center; border-top:2px solid {color}; padding:12px 16px;">
-                            <div style="font-size:10px; color:#556080; letter-spacing:2px;">{cat.upper()}</div>
-                            <div style="font-size:1.1em; font-weight:700; font-family:'Space Mono',monospace; color:{color}; margin-top:6px;">{val:,.0f}€</div>
-                            <div style="font-size:11px; color:#304060; margin-top:3px;">{pct:.1f}%</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Add Record ──────────────────────────────────────────────────────
-    with st.expander("Registar Mês"):
-        mf  = st.selectbox("Mês", get_months(), key="m_flx")
-        sal = st.number_input("Salário / Total Entradas (€)", min_value=0.0, format="%.2f", key="sal")
-
-        st.markdown("<div style='font-size:12px; color:#556080; margin:14px 0 6px; letter-spacing:1px;'>DESPESAS POR CATEGORIA</div>", unsafe_allow_html=True)
-        cat_vals = {}
-        c1_d,c2_d = st.columns(2)
-        for idx, cat in enumerate(DESPESA_CATS):
-            col = c1_d if idx % 2 == 0 else c2_d
-            cat_vals[cat] = col.number_input(f"{cat} (€)", min_value=0.0, format="%.2f", key=f"cat_{cat}")
-
-        total_desp = sum(cat_vals.values())
-        sobra      = sal - total_desp
-        taxa_p     = (sobra/sal*100) if sal > 0 else 0
-        tc         = "#00E87A" if sobra >= 0 else "#FF4D6A"
+        te    = float(df_f["Entradas"].sum())
+        ts    = float(df_f["Saidas"].sum()) if "Saidas" in df_f.columns else 0
+        tn    = te - ts
+        taxa  = tn / te * 100 if te > 0 else 0
+        avg   = tn / len(df_f)
+        proj  = avg * (12 - now.month)
+        tip   = "Excelente ritmo" if taxa >= 20 else "Razoável" if taxa >= 10 else "Abaixo do ideal"
+        bw    = min(int(taxa), 100)
+        tc    = "rgba(255,255,255,0.85)"
 
         st.markdown(f"""
-            <div style="background:#0D1219; border-radius:8px; padding:14px 16px; margin-top:12px; border:1px solid #1E2A3E;">
-                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
-                    <span style="color:#8899BB;">Total Despesas</span>
-                    <span style="font-family:'Space Mono',monospace; color:#FF4D6A;">{total_desp:,.2f} €</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:700;">
-                    <span style="color:#AABBDD;">Poupança do Mês</span>
-                    <span style="font-family:'Space Mono',monospace; color:{tc};">{sobra:,.2f} € ({taxa_p:.1f}%)</span>
+            <div class="savings-hero fade-up">
+                <div class="savings-label">Taxa de Poupança Média</div>
+                <div class="savings-big">{taxa:.1f}<span style="font-size:0.4em;opacity:0.6;font-weight:500;letter-spacing:0;">%</span></div>
+                <div class="savings-sub">{tip} &nbsp;·&nbsp; {tn:,.0f}€ poupados no total</div>
+                <div style="background:rgba(255,255,255,0.15);border-radius:99px;height:4px;margin-top:16px;overflow:hidden;">
+                    <div style="width:{bw}%;height:4px;border-radius:99px;background:rgba(255,255,255,0.75);transition:width 0.6s ease;"></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-        if st.button("GRAVAR FLUXO"):
-            # Save summary to poupanca.csv
-            summary = pd.DataFrame([{"Mês":mf,"Entradas":sal,"Saidas":total_desp}])
-            save_db(pd.concat([df_f, summary], ignore_index=True), "poupanca")
-            # Save category breakdown to despesas.csv
-            cat_rows = [{"Mês":mf,"Categoria":cat,"Saidas":val} for cat, val in cat_vals.items()]
-            save_db(pd.concat([df_desp, pd.DataFrame(cat_rows)], ignore_index=True), "despesas")
-            st.cache_data.clear()
-            st.success("✅  Gravado.")
-            st.rerun()
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Entradas",  f"{te:,.0f}€")
+        c2.metric("Saídas",    f"{ts:,.0f}€")
+        c3.metric("Projeção",  f"{proj:,.0f}€", delta=f"{12-now.month} meses restantes")
 
-    # ── History ──────────────────────────────────────────────────────────
-    if "edit_flx_idx" not in st.session_state:
-        st.session_state.edit_flx_idx = None
-
-    for i, r in df_f.iterrows():
-        net  = float(r["Entradas"]) - float(r["Saidas"])
-        taxa = (net/float(r["Entradas"])*100) if float(r["Entradas"]) > 0 else 0
-        nc   = "#10B981" if net >= 0 else "#EF4444"
-
-        cat_detail = ""
+        # Category breakdown
         if not df_desp.empty and "Categoria" in df_desp.columns:
-            mc = df_desp[(df_desp["Mês"]==r["Mês"]) & (df_desp["Categoria"] != "_total_")]
-            if not mc.empty:
-                parts = [f'{row["Categoria"]}: {float(row["Saidas"]):,.0f}€' for _, row in mc.iterrows() if float(row["Saidas"]) > 0]
-                cat_detail = " · ".join(parts[:5])
-
-        if st.session_state.edit_flx_idx == i:
-            # ── EDIT MODE ────────────────────────────────────────────────
-            st.markdown(f"""
-                <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:14px 18px; margin-bottom:4px;">
-                    <div style="font-size:10px; color:#3B82F6; letter-spacing:2px; margin-bottom:10px; font-weight:600;">A EDITAR — {r["Mês"]}</div>
-                </div>
-            """, unsafe_allow_html=True)
-            fe1, fe2 = st.columns(2)
-            new_ent = fe1.number_input("Entradas (€)", value=float(r["Entradas"]), format="%.2f", key=f"fe_ent_{i}")
-            new_sai = fe2.number_input("Saídas (€)",   value=float(r["Saidas"]),   format="%.2f", key=f"fe_sai_{i}")
-            fb1, fb2 = st.columns(2)
-            if fb1.button("Guardar", key=f"fesave_{i}"):
-                df_f.at[i,"Entradas"] = new_ent
-                df_f.at[i,"Saidas"]   = new_sai
-                save_db(df_f, "poupanca")
-                st.session_state.edit_flx_idx = None
-                st.rerun()
-            if fb2.button("Cancelar", key=f"fecancel_{i}"):
-                st.session_state.edit_flx_idx = None
-                st.rerun()
-        else:
-            # ── VIEW MODE ────────────────────────────────────────────────
-            c_card, c_edit, c_del = st.columns([10, 1, 1])
-            with c_card:
-                st.markdown(f"""
-                    <div class="card">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-weight:700; color:#2D3748;">{r["Mês"]}</span>
-                            <span style="color:{nc}; font-weight:700;">{net:,.2f} € poupados ({taxa:.1f}%)</span>
+            cat_t   = df_desp[df_desp["Categoria"] != "_total_"].groupby("Categoria")["Saidas"].sum().sort_values(ascending=False)
+            total_s = cat_t.sum()
+            if total_s > 0:
+                st.markdown('<div class="section-label" style="margin-top:20px;">Distribuição de Despesas</div>', unsafe_allow_html=True)
+                st.markdown('<div class="card"><div class="card-body">', unsafe_allow_html=True)
+                for cat, val in cat_t.items():
+                    color = CAT_COLORS.get(cat, "#6B7280")
+                    icon  = CAT_ICONS.get(cat, "•")
+                    pct   = val / total_s * 100
+                    bw_c  = int(pct)
+                    st.markdown(f"""
+                        <div class="cat-row">
+                            <div class="cat-dot" style="background:{color};"></div>
+                            <div class="cat-name">{icon} {cat}</div>
+                            <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                                <div style="width:80px;height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden;">
+                                    <div style="width:{bw_c}%;height:4px;background:{color};border-radius:2px;"></div>
+                                </div>
+                                <div class="cat-val">{val:,.0f}€</div>
+                                <div class="cat-pct">{pct:.0f}%</div>
+                            </div>
                         </div>
-                        <div style="font-size:11px; color:#A0AEC0; margin-top:5px;">
-                            Entradas: {float(r["Entradas"]):,.0f}€ · Saídas: {float(r["Saidas"]):,.0f}€
-                        </div>
-                        {'<div style="font-size:11px; color:#CBD5E0; margin-top:3px;">'+cat_detail+'</div>' if cat_detail else ''}
-                    </div>
-                """, unsafe_allow_html=True)
-            with c_edit:
-                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-                if st.button("✏️", key=f"fedit_{i}"):
-                    st.session_state.edit_flx_idx = i
-                    st.rerun()
-            with c_del:
-                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"df_{i}"):
-                    save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
-                    st.rerun()
-
-# ══════════════════════════════════════════════════════════════════
-# TAB 3 — PLANO TREINO
-# ══════════════════════════════════════════════════════════════════
-with tab3:
-
-    # Training plan data
-    TREINO = {
-        "Segunda — Base & Estabilidade": {
-            "cor": "#3B82F6",
-            "aquecimento": [
-                "Círculos de anca",
-                "Rotação torácica",
-                "10 agachamentos lentos",
-                "10 scapular push-ups",
-            ],
-            "exercicios": [
-                ("Goblet Squat",                  "3x 10-12",        "Progressão lenta de carga · foco em controlo e profundidade"),
-                ("Romanian Deadlift",              "3x 10",           "Kettlebell ou barra · foco no alongamento posterior"),
-                ("Passadas atrás (Reverse Lunges)","3x 8 cada perna", "Excelente para estabilidade da anca"),
-                ("Prancha Frontal",                "3x 30-45s",       ""),
-                ("Side Plank",                     "2x cada lado",    ""),
-            ],
-            "nota": "Este treino reforça anca e core — vai ajudar muito a tua estrutura na zona da anca."
-        },
-        "Quarta — Ombros & Estabilidade Superior": {
-            "cor": "#8B5CF6",
-            "aquecimento": [
-                "Mobilidade ombro",
-                "Elástico (rotação externa)",
-            ],
-            "exercicios": [
-                ("Overhead Press leve",      "3x 10",    "Halter ou máquina · controlado, sem ego lift"),
-                ("Elevações Laterais",       "3x 12-15", ""),
-                ("Face Pulls",               "3x 12-15", "Fundamental para proteger o ombro"),
-                ("Remo Unilateral",          "3x 10 cada lado", "Ótimo para estabilidade do tronco"),
-                ("Hiperextensão",            "3x 12",    ""),
-            ],
-            "nota": ""
-        },
-        "Sexta — Peito & Costas (Principal)": {
-            "cor": "#10B981",
-            "aquecimento": [],
-            "exercicios": [
-                ("Chest Press",             "3x 12/10/8",  "Progressão de carga"),
-                ("Remo Máquina",            "3x 12/10/8",  ""),
-                ("Press Inclinado",         "3x 10/8/6",   ""),
-                ("Dorsal Máquina / Barras", "3x 10-12",    ""),
-                ("Finisher opcional",       "Flexões ou 5-8 barras", ""),
-            ],
-            "nota": "Aqui podes usar a pirâmide progressiva."
-        },
-    }
-
-    # session state for edit mode
-    if "treino_edit" not in st.session_state:
-        st.session_state.treino_edit = False
-    if "treino_data" not in st.session_state:
-        # load custom plan from file if exists, else use default
-        treino_path = f"{DATA_DIR}/treino_custom.csv"
-        if os.path.exists(treino_path):
-            st.session_state.treino_data = pd.read_csv(treino_path).to_dict("records")
-        else:
-            st.session_state.treino_data = None
-
-    # checklist state — reset weekly (key = week number)
-    week_key = f"treino_checks_{datetime.now().isocalendar()[1]}"
-    if week_key not in st.session_state:
-        st.session_state[week_key] = {}
-
-    # header
-    st.markdown("""
-        <div style="margin-bottom:20px;">
-            <div style="font-size:18px; font-weight:700; color:#1A202C;">Plano de Treino Semanal</div>
-            <div style="font-size:13px; color:#A0AEC0; margin-top:3px;">3x por semana · Segunda · Quarta · Sexta</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # edit toggle
-    col_h, col_e = st.columns([10,1])
-    with col_e:
-        if st.button("✏️", key="treino_edit_btn"):
-            st.session_state.treino_edit = not st.session_state.treino_edit
-
-    if st.session_state.treino_edit:
-        st.markdown("""
-            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
-                <div style="font-size:12px; color:#3B82F6; font-weight:600;">MODO EDIÇÃO — edita o texto de cada exercício diretamente abaixo e guarda.</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        edited = {}
-        for dia, dados in TREINO.items():
-            st.markdown(f"**{dia}**")
-            edited[dia] = []
-            for idx, (nome, series, desc) in enumerate(dados["exercicios"]):
-                c1, c2, c3 = st.columns([3,2,4])
-                n = c1.text_input("Exercício", value=nome,   key=f"te_n_{dia}_{idx}", label_visibility="collapsed")
-                s = c2.text_input("Séries",    value=series, key=f"te_s_{dia}_{idx}", label_visibility="collapsed")
-                d = c3.text_input("Notas",     value=desc,   key=f"te_d_{dia}_{idx}", label_visibility="collapsed")
-                edited[dia].append((n, s, d))
-            st.markdown("---")
-
-        if st.button("GUARDAR PLANO"):
-            rows = []
-            for dia, exs in edited.items():
-                for nome, series, desc in exs:
-                    rows.append({"dia": dia, "nome": nome, "series": series, "desc": desc})
-            pd.DataFrame(rows).to_csv(f"{DATA_DIR}/treino_custom.csv", index=False)
-            st.session_state.treino_data = rows
-            st.session_state.treino_edit = False
-            st.success("Plano guardado!")
-            st.rerun()
+                    """, unsafe_allow_html=True)
+                st.markdown('</div></div>', unsafe_allow_html=True)
 
     else:
-        # DISPLAY MODE — checklist cards per day
-        for dia, dados in TREINO.items():
-            cor = dados["cor"]
+        st.markdown("""
+            <div class="empty-state">
+                <div class="icon">📊</div>
+                <div class="title">Sem registos de fluxo</div>
+                <div class="sub">Começa por adicionar o teu primeiro mês</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            # load custom exercises if saved
-            if st.session_state.treino_data:
-                exs = [(r["nome"], r["series"], r["desc"])
-                       for r in st.session_state.treino_data if r["dia"] == dia]
+    # ── Add record ────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Novo Registo</div>', unsafe_allow_html=True)
+    with st.expander("Registar mês"):
+        mf  = st.selectbox("Mês", get_months(), key="m_flx")
+        sal = st.number_input("Salário / Entradas (€)", min_value=0.0, format="%.2f", key="sal")
+        st.markdown('<div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:1.2px;text-transform:uppercase;margin:14px 0 8px;">Despesas por categoria</div>', unsafe_allow_html=True)
+        cat_vals = {}
+        c1d, c2d = st.columns(2)
+        for idx, cat in enumerate(DESPESA_CATS):
+            col = c1d if idx % 2 == 0 else c2d
+            cat_vals[cat] = col.number_input(f"{CAT_ICONS.get(cat,'')} {cat}", min_value=0.0, format="%.2f", key=f"c_{cat}")
+        total_d = sum(cat_vals.values())
+        sobra   = sal - total_d
+        taxa_p  = (sobra / sal * 100) if sal > 0 else 0
+        tc2     = "#059669" if sobra >= 0 else "#DC2626"
+        st.markdown(f"""
+            <div class="total-preview" style="margin-top:12px;">
+                <span>Poupança do mês</span>
+                <strong style="color:{tc2};">{sobra:,.0f}€ <span style="font-size:0.7em;font-weight:600;opacity:0.7;">({taxa_p:.1f}%)</span></strong>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("Gravar Fluxo", key="btn_flx"):
+            summary  = pd.DataFrame([{"Mês":mf,"Entradas":sal,"Saidas":total_d}])
+            cat_rows = [{"Mês":mf,"Categoria":cat,"Saidas":val} for cat, val in cat_vals.items()]
+            save_db(pd.concat([df_f, summary], ignore_index=True), "poupanca")
+            save_db(pd.concat([df_desp, pd.DataFrame(cat_rows)], ignore_index=True), "despesas")
+            st.cache_data.clear(); st.rerun()
+
+    # ── History ───────────────────────────────────────────────────────
+    if not df_f.empty:
+        st.markdown('<div class="section-label">Histórico</div>', unsafe_allow_html=True)
+        for i, r in df_f.iterrows():
+            net  = float(r["Entradas"]) - float(r["Saidas"])
+            taxa = (net / float(r["Entradas"]) * 100) if float(r["Entradas"]) > 0 else 0
+            nc   = "#059669" if net >= 0 else "#DC2626"
+
+            cat_detail = ""
+            if not df_desp.empty and "Categoria" in df_desp.columns:
+                mc = df_desp[(df_desp["Mês"] == r["Mês"]) & (df_desp["Categoria"] != "_total_")]
+                if not mc.empty:
+                    parts = [f'{row["Categoria"]}: {float(row["Saidas"]):,.0f}€' for _, row in mc.iterrows() if float(row["Saidas"]) > 0]
+                    cat_detail = " · ".join(parts[:3])
+
+            if st.session_state.edit_flx == i:
+                st.markdown('<div class="edit-bar">✏ A editar registo</div>', unsafe_allow_html=True)
+                fe1, fe2 = st.columns(2)
+                ne = fe1.number_input("Entradas", value=float(r["Entradas"]), format="%.2f", key=f"fei_{i}")
+                ns = fe2.number_input("Saídas",   value=float(r["Saidas"]),   format="%.2f", key=f"fes_{i}")
+                fb1, fb2 = st.columns(2)
+                with fb1:
+                    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
+                    if st.button("Guardar", key=f"fsv_{i}"):
+                        df_f.at[i,"Entradas"] = ne; df_f.at[i,"Saidas"] = ns
+                        save_db(df_f, "poupanca"); st.session_state.edit_flx = None; st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                with fb2:
+                    st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
+                    if st.button("Cancelar", key=f"fca_{i}"):
+                        st.session_state.edit_flx = None; st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
             else:
-                exs = dados["exercicios"]
+                cc, ce, cd = st.columns([10, 1, 1])
+                with cc:
+                    st.markdown(f"""
+                        <div class="list-row">
+                            <div class="lr-left">
+                                <div class="lr-title">{r["Mês"]}</div>
+                                <div class="lr-sub">↑ {float(r["Entradas"]):,.0f}€ &nbsp;·&nbsp; ↓ {float(r["Saidas"]):,.0f}€ {'&nbsp;·&nbsp; '+cat_detail if cat_detail else ''}</div>
+                            </div>
+                            <div class="lr-right">
+                                <div class="lr-value" style="color:{nc};">{net:,.0f}€</div>
+                                <div class="lr-pct">{taxa:.1f}%</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with ce:
+                    if st.button("✏️", key=f"fe_{i}"):
+                        st.session_state.edit_flx = i; st.rerun()
+                with cd:
+                    if st.button("🗑", key=f"fd_{i}"):
+                        save_db(df_f.drop(i).reset_index(drop=True), "poupanca"); st.rerun()
 
-            # count done
-            done = sum(1 for idx in range(len(exs))
-                       if st.session_state[week_key].get(f"{dia}_{idx}", False))
-            total_ex = len(exs)
-            pct = int(done/total_ex*100) if total_ex > 0 else 0
-            done_color = "#10B981" if pct == 100 else "#3B82F6" if pct > 0 else "#E2E8F0"
+
+# ══════════════════════════════════════════════════════════════════════
+# ▌TAB 3 — PLANO TREINO
+# ══════════════════════════════════════════════════════════════════════
+with tab3:
+    treino_path = f"{DATA_DIR}/treino_custom.csv"
+    custom_plan = {}
+    if os.path.exists(treino_path):
+        try:
+            df_tc = pd.read_csv(treino_path)
+            for dia in TREINO:
+                rows = df_tc[df_tc["dia"] == dia]
+                if not rows.empty:
+                    custom_plan[dia] = [(r["nome"], r["series"], r["desc"]) for _, r in rows.iterrows()]
+        except: pass
+
+    # Weekly progress header
+    total_ex   = sum(len(TREINO[d]["ex"]) for d in TREINO)
+    total_done = sum(1 for d in TREINO for idx in range(len(TREINO[d]["ex"]))
+                     if st.session_state[week_key].get(f"{d}_{idx}", False))
+    wpct = int(total_done / total_ex * 100) if total_ex > 0 else 0
+    wc   = "#059669" if wpct == 100 else "#2563EB" if wpct > 0 else "#CBD5E1"
+
+    ch, ce = st.columns([9, 1])
+    with ch:
+        st.markdown(f"""
+            <div class="card fade-up" style="margin-bottom:14px;">
+                <div class="card-body">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div>
+                            <div style="font-size:16px;font-weight:800;color:#0F172A;">Semana {datetime.now().isocalendar()[1]}</div>
+                            <div style="font-size:12px;color:#94A3B8;margin-top:2px;">3× semana &nbsp;·&nbsp; Seg · Qua · Sex</div>
+                        </div>
+                        <div style="font-size:28px;font-weight:900;color:{wc};letter-spacing:-1px;">{wpct}<span style="font-size:0.5em;opacity:0.6;font-weight:500;">%</span></div>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill" style="width:{wpct}%;background:{wc};"></div>
+                    </div>
+                    <div style="font-size:11px;color:#94A3B8;margin-top:4px;">{total_done} de {total_ex} exercícios concluídos esta semana</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    with ce:
+        st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
+        if st.button("✏️", key="btn_treino_edit"):
+            st.session_state.treino_edit = not st.session_state.treino_edit; st.rerun()
+
+    if st.session_state.treino_edit:
+        # EDIT MODE
+        st.markdown('<div class="edit-bar">✏ Modo edição — altera nome, séries ou notas</div>', unsafe_allow_html=True)
+        edited = {}
+        for dia, dados in TREINO.items():
+            exs = custom_plan.get(dia, dados["ex"])
+            st.markdown(f'<div style="font-size:13px;font-weight:800;color:{dados["cor"]};margin:16px 0 8px;letter-spacing:0.3px;">{dia} — {dados["sub"]}</div>', unsafe_allow_html=True)
+            edited[dia] = []
+            for idx, (nome, series, desc) in enumerate(exs):
+                c1, c2, c3 = st.columns([3, 2, 4])
+                n = c1.text_input("",value=nome,   key=f"tn_{dia}_{idx}", placeholder="Nome")
+                s = c2.text_input("",value=series, key=f"ts_{dia}_{idx}", placeholder="Séries")
+                d = c3.text_input("",value=desc,   key=f"td_{dia}_{idx}", placeholder="Notas")
+                edited[dia].append((n, s, d))
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            st.markdown('<div class="btn-green">', unsafe_allow_html=True)
+            if st.button("Guardar Plano", key="save_treino"):
+                rows = [{"dia":dia,"nome":n,"series":s,"desc":d} for dia,exs in edited.items() for n,s,d in exs]
+                pd.DataFrame(rows).to_csv(treino_path, index=False)
+                st.session_state.treino_edit = False; st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with sc2:
+            st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
+            if st.button("Cancelar", key="cancel_treino"):
+                st.session_state.treino_edit = False; st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    else:
+        # DISPLAY MODE
+        for dia, dados in TREINO.items():
+            exs   = custom_plan.get(dia, dados["ex"])
+            cor   = dados["cor"]
+            done  = sum(1 for idx in range(len(exs)) if st.session_state[week_key].get(f"{dia}_{idx}", False))
+            total = len(exs)
+            pct   = int(done / total * 100) if total > 0 else 0
+            bc    = "#059669" if pct == 100 else cor if pct > 0 else "#CBD5E1"
+            badge_bg  = "#ECFDF5" if pct==100 else f"{cor}15" if pct>0 else "#F8FAFC"
+            badge_txt = "#059669" if pct==100 else cor if pct>0 else "#94A3B8"
 
             st.markdown(f"""
-                <div class="card" style="border-left:4px solid {cor}; margin-bottom:6px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <span style="font-weight:700; font-size:15px; color:#1A202C;">{dia}</span>
-                        <span style="font-size:12px; font-weight:600; color:{done_color}; background:{'#D1FAE5' if pct==100 else '#EFF6FF' if pct>0 else '#F7FAFC'}; padding:3px 10px; border-radius:20px;">{done}/{total_ex} feitos</span>
+                <div class="day-card fade-up" style="border-top:3px solid {cor};">
+                    <div class="day-header">
+                        <div>
+                            <div class="day-title">{dia}</div>
+                            <div class="day-sub">{dados["sub"]}</div>
+                        </div>
+                        <div class="day-badge" style="background:{badge_bg};color:{badge_txt};">{"✓ Completo" if pct==100 else f"{done}/{total}"}</div>
                     </div>
-                    {"" if not dados["aquecimento"] else f'<div style="font-size:11px; color:#A0AEC0; margin-bottom:8px; font-weight:600; letter-spacing:1px;">AQUECIMENTO (5-7 min)</div><div style="font-size:12px; color:#718096; margin-bottom:10px;">' + " · ".join(dados["aquecimento"]) + "</div>"}
+                    {"" if not dados["warmup"] else f'<div class="day-body" style="padding-bottom:0;"><div class="warmup-strip"><strong>Aquecimento</strong>' + " &nbsp;·&nbsp; ".join(dados["warmup"]) + "</div></div>"}
+                    <div class="day-body" style="padding-top:{'0' if dados['warmup'] else '0'};">
+                        <div class="prog-track" style="margin:0 0 12px;">
+                            <div class="prog-fill" style="width:{pct}%;background:{bc};"></div>
+                        </div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
             for idx, (nome, series, desc) in enumerate(exs):
-                check_key = f"{dia}_{idx}"
-                checked = st.session_state[week_key].get(check_key, False)
-                col_check, col_info = st.columns([1, 11])
-                with col_check:
-                    val = st.checkbox("", value=checked, key=f"chk_{dia}_{idx}_{week_key}")
-                    st.session_state[week_key][check_key] = val
-                with col_info:
-                    strike = "line-through; opacity:0.45" if val else "none"
-                    st.markdown(f"""
-                        <div style="padding:6px 0; border-bottom:1px solid #F0F4F8;">
-                            <span style="font-weight:600; color:#2D3748; text-decoration:{strike}; font-size:14px;">{nome}</span>
-                            <span style="color:#3B82F6; font-size:12px; font-weight:600; margin-left:10px;">{series}</span>
-                            {'<div style="font-size:12px; color:#A0AEC0; margin-top:2px;">'+desc+'</div>' if desc else ''}
-                        </div>
-                    """, unsafe_allow_html=True)
+                ck      = f"{dia}_{idx}"
+                done_ex = st.session_state[week_key].get(ck, False)
+                vc      = st.checkbox("", value=done_ex, key=f"ck_{ck}_{week_key}", label_visibility="collapsed")
+                if vc != done_ex:
+                    st.session_state[week_key][ck] = vc; st.rerun()
 
-            if dados["nota"]:
+                circle_html = f'<div class="cr-circle {"done" if done_ex else ""}">{"<span class=cr-check>✓</span>" if done_ex else ""}</div>'
+                op = "0.35" if done_ex else "1"
+                series_bg = f"background:{cor}12;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
+
                 st.markdown(f"""
-                    <div style="background:#F0FDF4; border-radius:8px; padding:10px 14px; margin:8px 0 16px; font-size:12px; color:#059669; border-left:3px solid #10B981;">
-                        {dados["nota"]}
+                    <div class="check-row {"done" if done_ex else ""}" style="padding-left:18px;padding-right:18px;">
+                        {circle_html}
+                        <div style="flex:1;min-width:0;">
+                            <div class="cr-name {"done" if done_ex else ""}">{nome}</div>
+                            <span class="cr-series" style="{series_bg}">{series}</span>
+                            {'<div class="cr-desc">'+desc+'</div>' if desc else ''}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
-            # progress bar
-            bar_w = pct
-            st.markdown(f"""
-                <div style="background:#EDF2F7; border-radius:20px; height:5px; margin-bottom:18px;">
-                    <div style="width:{bar_w}%; height:5px; border-radius:20px; background:{done_color}; transition:width 0.4s;"></div>
-                </div>
-            """, unsafe_allow_html=True)
+            if dados["nota"]:
+                st.markdown(f'<div class="note-strip" style="margin:4px 18px 18px;">{dados["nota"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        # reset week button
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Reiniciar Checklist da Semana"):
-            st.session_state[week_key] = {}
-            st.rerun()
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
+        if st.button("↺ Reiniciar Semana", key="reset_week"):
+            st.session_state[week_key] = {}; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════
-# TAB 4 — ANÁLISE DE AÇÕES
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+# ▌TAB 4 — ANÁLISE DE AÇÕES
+# ══════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("<div style='margin-bottom:6px; font-size:12px; color:#A0AEC0; letter-spacing:2px; font-weight:600;'>TICKER SYMBOL</div>", unsafe_allow_html=True)
-    col_inp, col_btn = st.columns([5,1])
-    with col_inp:
+    ci, cb = st.columns([5, 1])
+    with ci:
         ticker_input = st.text_input(
-            label="ticker", label_visibility="collapsed",
-            placeholder="ex: AAPL   GOOGL   NVDA   MSFT   EDP.LS",
-            key="ticker_field"
+            "", placeholder="Ticker — AAPL · NVDA · GOOGL · EDP.LS",
+            label_visibility="collapsed", key="ticker_field"
         ).strip().upper()
-    with col_btn:
-        st.markdown("<br>", unsafe_allow_html=True)
-        do_scan = st.button("▶  SCAN", key="scan_btn")
+    with cb:
+        do_scan = st.button("Scan", key="btn_scan")
 
-    if "active_ticker" not in st.session_state:
-        st.session_state.active_ticker = ""
     if do_scan and ticker_input:
-        st.session_state.active_ticker = ticker_input
+        st.session_state.ticker = ticker_input
+    use_ticker = st.session_state.ticker
 
-    ticker_to_use = st.session_state.active_ticker
-
-    if ticker_to_use:
-        with st.spinner(f"A carregar {ticker_to_use}..."):
-            info, err = fetch_info(ticker_to_use)
+    if use_ticker:
+        with st.spinner(f"A carregar {use_ticker}..."):
+            info, err = fetch_info(use_ticker)
 
         if err:
-            st.error(f"❌  {err}")
-            st.info("💡  Confirma o ticker em finance.yahoo.com — Ex: GOOGL, AAPL, EDP.LS")
+            st.error(err)
         else:
             price    = sg(info,"currentPrice","regularMarketPrice","previousClose",default=0)
             sector   = info.get("sector","")   or "N/A"
-            industry = info.get("industry","") or "N/A"
-            name     = info.get("longName") or info.get("shortName","") or ticker_to_use
+            industry = info.get("industry","") or ""
+            name     = info.get("longName") or info.get("shortName","") or use_ticker
             currency = info.get("currency","USD")
-            exch     = info.get("exchange","") or ""
+            prev_c   = sg(info,"previousClose","regularMarketPreviousClose",default=price)
+            day_d    = price - prev_c
+            day_p    = (day_d / prev_c * 100) if prev_c > 0 else 0
+            ds       = "+" if day_d >= 0 else ""
+            dc       = "#059669" if day_d >= 0 else "#DC2626"
 
+            # Stock header card
             st.markdown(f"""
-                <div style="margin:8px 0 18px;">
-                    <div style="font-size:1.45em; font-weight:700;">
-                        {name} <span class="badge">{sector}</span> <span class="badge">{industry[:35]}</span>
-                    </div>
-                    <div style="font-size:11px; color:#304060; margin-top:5px; font-family:'Space Mono',monospace;">
-                        {ticker_to_use} · {exch} · {currency}
+                <div class="card fade-up">
+                    <div class="card-body">
+                        <div class="stock-header">
+                            <div style="flex:1;min-width:0;">
+                                <div class="stock-name">{name}</div>
+                                <div class="stock-meta">
+                                    <span class="stock-ticker">{use_ticker}</span>
+                                    <span class="chip chip-blue">{sector}</span>
+                                    {'<span class="chip chip-grey">'+industry[:24]+'</span>' if industry else ''}
+                                </div>
+                            </div>
+                            <div style="text-align:right;flex-shrink:0;">
+                                <div class="stock-price">{price:.2f}</div>
+                                <div class="stock-change" style="color:{dc};">{ds}{day_d:.2f} &nbsp; {ds}{day_p:.2f}%</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            iv_res  = intrinsic_value(info, sector)
-            iv      = iv_res["iv"]
-            upside  = ((iv/price)-1)*100 if price > 0 and iv > 0 else 0
-            checks, score, n_checks, verdict, vcolor, vbg, vborder, vdesc = run_checklist(info, iv, price)
+            # Run engines
+            iv_res = intrinsic_value(info, sector)
+            iv     = iv_res["iv"]
+            upside = ((iv / price) - 1) * 100 if price > 0 and iv > 0 else 0
+            checks, score, n_ch, verdict, vc, vbg, vborder, vicon, vdesc = run_checklist(info, iv, price)
 
+            # Verdict
             st.markdown(f"""
-                <div class="verdict" style="background:{vbg}; border:1px solid {vborder}; color:{vcolor};">
-                    {verdict} · {score}/{n_checks}
-                </div>
-                <div style="background:#0D1219; border-radius:8px; border:1px solid #151C28; padding:12px 18px; margin-bottom:18px; font-size:13px; color:#8899BB;">
-                    {vdesc}
+                <div class="verdict-wrap fade-up" style="background:{vbg};border:1.5px solid {vborder};">
+                    <div class="verdict-icon" style="background:{vc}20;color:{vc};">{vicon}</div>
+                    <div>
+                        <div class="verdict-title" style="color:{vc};">{verdict}</div>
+                        <div class="verdict-desc" style="color:{vc};">{vdesc}</div>
+                    </div>
+                    <div style="margin-left:auto;text-align:right;flex-shrink:0;">
+                        <div style="font-size:22px;font-weight:900;color:{vc};letter-spacing:-0.5px;">{score}<span style="font-size:0.55em;opacity:0.5;">/{n_ch}</span></div>
+                        <div style="font-size:10px;color:{vc};opacity:0.6;font-weight:600;letter-spacing:1px;">CRITÉRIOS</div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            m1,m2,m3,m4 = st.columns(4)
-            m1.metric("Preço Atual",    f"{price:.2f} {currency}")
-            m2.metric("Valor Intrínseco", f"{iv:.2f} {currency}" if iv>0 else "N/A",
-                                           delta=f"{upside:+.1f}%" if iv>0 else None)
-            m3.metric("Metodologia",    iv_res["label"])
-            m4.metric("Score",          f"{score}/{n_checks}")
-
-            st.markdown("<br>", unsafe_allow_html=True)
+            # Key metrics
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Preço",            f"{price:.2f} {currency}")
+            m2.metric("Valor Intrínseco", f"{iv:.2f}" if iv > 0 else "N/A",
+                      delta=f"{upside:+.1f}%" if iv > 0 else None)
+            m3.metric("Modelo",           iv_res["label"])
 
             # Checklist by category
-            categories = ["Crescimento","Rentabilidade","Qualidade","Valuation","Risco"]
-            cols = st.columns(2)
-            col_idx = 0
-            for cat in categories:
-                cat_checks = [(l,p,v) for c,l,p,v in checks if c==cat]
-                if not cat_checks: continue
-                cs = sum(1 for _,p,_ in cat_checks if p)
-                ct = len(cat_checks)
-                cc = "#00E87A" if cs==ct else "#FFD060" if cs>0 else "#FF4D6A"
-                html = f'<div class="card"><div class="sec-title">{cat} <span style="color:{cc};">{cs}/{ct}</span></div>'
-                for label,passed,val in cat_checks:
-                    ic = "✅" if passed else "❌"
-                    vc = "#00E87A" if passed else "#FF4D6A"
-                    html += f'<div class="mrow"><span class="label">{label}</span><span class="val" style="color:{vc};">{val} {ic}</span></div>'
-                html += '</div>'
-                with cols[col_idx % 2]:
-                    st.markdown(html, unsafe_allow_html=True)
-                col_idx += 1
-
-            # Valuation breakdown
-            if iv_res["rows"]:
-                st.markdown("<br>", unsafe_allow_html=True)
-                html = f'<div class="card"><div class="sec-title">Valuation Breakdown — {iv_res["label"]}</div>'
-                for k,v in iv_res["rows"]:
-                    html += f'<div class="mrow"><span class="label">{k}</span><span class="val blue">{v}</span></div>'
-                if iv > 0:
-                    uc = "#00E87A" if upside>15 else "#FFD060" if upside>-10 else "#FF4D6A"
-                    html += f'<div class="mrow" style="margin-top:4px;"><span style="color:#AABBDD; font-weight:600;">Upside / Downside</span><span class="val" style="color:{uc}; font-size:15px;">{upside:+.1f}%</span></div>'
-                html += '</div>'
+            st.markdown('<div class="section-label" style="margin-top:20px;">Análise Detalhada</div>', unsafe_allow_html=True)
+            cats = ["Crescimento","Margem","Retorno","Qualidade","Valuation","Risco"]
+            for cat in cats:
+                cc_items = [(l, p, v) for c, l, p, v in checks if c == cat]
+                if not cc_items: continue
+                cs = sum(1 for _, p, _ in cc_items if p); ct = len(cc_items)
+                cc_col = "#059669" if cs==ct else "#D97706" if cs>0 else "#DC2626"
+                html = f"""
+                    <div class="card" style="margin-bottom:8px;">
+                        <div class="card-body-sm">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <span style="font-size:11px;font-weight:700;color:#374151;letter-spacing:1px;">{cat.upper()}</span>
+                                <span class="chip {'chip-green' if cs==ct else 'chip-yellow' if cs>0 else 'chip-red'}">{cs}/{ct}</span>
+                            </div>
+                """
+                for label, passed, val in cc_items:
+                    ic  = "✓" if passed else "✕"
+                    ibc = "#059669" if passed else "#DC2626"
+                    ibg = "#ECFDF5" if passed else "#FEF2F2"
+                    html += f'<div class="mrow"><span class="lbl">{label}</span><div style="display:flex;align-items:center;gap:8px;"><span class="val">{val}</span><div style="width:20px;height:20px;border-radius:50%;background:{ibg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:{ibc};">{ic}</div></div></div>'
+                html += "</div></div>"
                 st.markdown(html, unsafe_allow_html=True)
 
-            # All metrics
-            with st.expander("Todas as Métricas"):
-                def fmtB(v): return f"${float(v)/1e9:.2f}B" if v else "N/A"
-                def fmtP(v): return f"{float(v)*100:.1f}%" if v else "N/A"
-                def fmtX(v): return f"{float(v):.2f}x" if v else "N/A"
-                def fmtV(v): return f"{float(v):.2f}" if v else "N/A"
+            # Valuation detail
+            if iv_res["rows"]:
+                html = f"""
+                    <div class="card" style="margin-bottom:8px;">
+                        <div class="card-body-sm">
+                            <div style="font-size:11px;font-weight:700;color:#374151;letter-spacing:1px;margin-bottom:8px;">{iv_res["label"].upper()}</div>
+                """
+                for k, v in iv_res["rows"]:
+                    html += f'<div class="mrow"><span class="lbl">{k}</span><span class="val" style="color:#2563EB;">{v}</span></div>'
+                if iv > 0:
+                    uc = "#059669" if upside > 15 else "#D97706" if upside > -10 else "#DC2626"
+                    html += f'<div class="mrow" style="padding-top:12px;border-top:2px solid #F1F5F9;margin-top:4px;"><span style="font-weight:700;color:#0F172A;font-size:13px;">Upside / Downside</span><span style="font-size:18px;font-weight:900;color:{uc};letter-spacing:-0.5px;">{upside:+.1f}%</span></div>'
+                html += "</div></div>"
+                st.markdown(html, unsafe_allow_html=True)
 
-                all_m = [
-                    ("── PREÇO & MERCADO","",""),
-                    ("Preço Atual",         fmtV(price),""),
-                    ("Market Cap",          fmtB(info.get("marketCap",0)),""),
-                    ("52W High",            fmtV(sg(info,"fiftyTwoWeekHigh",default=0)),""),
-                    ("52W Low",             fmtV(sg(info,"fiftyTwoWeekLow",default=0)),""),
-                    ("EPS TTM",             fmtV(sg(info,"trailingEps",default=0)),""),
-                    ("EPS Forward",         fmtV(sg(info,"forwardEps",default=0)),""),
-                    ("── VALUATION","",""),
-                    ("P/E TTM",             fmtX(sg(info,"trailingPE",default=0)),""),
-                    ("P/E Forward",         fmtX(sg(info,"forwardPE",default=0)),""),
-                    ("PEG Ratio",           fmtV(sg(info,"pegRatio",default=0)),""),
-                    ("P/S Ratio",           fmtX(sg(info,"priceToSalesTrailing12Months",default=0)),""),
-                    ("P/B Ratio",           fmtX(sg(info,"priceToBook",default=0)),""),
-                    ("EV/EBITDA",           fmtX(sg(info,"enterpriseToEbitda",default=0)),""),
-                    ("EV/Revenue",          fmtX(sg(info,"enterpriseToRevenue",default=0)),""),
-                    ("── CRESCIMENTO","",""),
-                    ("Receita YoY",         fmtP(sg(info,"revenueGrowth",default=0)),""),
-                    ("Lucro YoY",           fmtP(sg(info,"earningsGrowth",default=0)),""),
-                    ("── RENTABILIDADE","",""),
-                    ("Margem Bruta",        fmtP(sg(info,"grossMargins",default=0)),""),
-                    ("Margem Líquida",      fmtP(sg(info,"profitMargins",default=0)),""),
-                    ("ROE",                 fmtP(sg(info,"returnOnEquity",default=0)),""),
-                    ("ROA",                 fmtP(sg(info,"returnOnAssets",default=0)),""),
-                    ("── BALANÇO","",""),
-                    ("Receita Total",       fmtB(info.get("totalRevenue",0)),""),
-                    ("EBITDA",              fmtB(info.get("ebitda",0)),""),
-                    ("Lucro Líquido",       fmtB(info.get("netIncomeToCommon",0)),""),
-                    ("Free Cash Flow",      fmtB(info.get("freeCashflow",0)),""),
-                    ("Caixa Total",         fmtB(info.get("totalCash",0)),""),
-                    ("Dívida Total",        fmtB(info.get("totalDebt",0)),""),
-                    ("Current Ratio",       fmtX(sg(info,"currentRatio",default=0)),""),
-                    ("── RISCO & DIVIDENDO","",""),
-                    ("Beta",                fmtV(sg(info,"beta",default=0)),""),
-                    ("Dividend Yield",      fmtP(sg(info,"dividendYield",default=0)),""),
-                    ("── ANALISTAS","",""),
-                    ("Preço Alvo Médio",    fmtV(sg(info,"targetMeanPrice",default=0)),""),
-                    ("Upside p/ Alvo",      f"{((sg(info,'targetMeanPrice',default=0)/price)-1)*100:+.1f}%" if price and sg(info,'targetMeanPrice',default=0) else "N/A",""),
-                    ("Recomendação",        (info.get("recommendationKey","") or "N/A").upper(),""),
+            # All metrics expander
+            with st.expander("Todas as métricas"):
+                def fB(v): return f"${float(v)/1e9:.2f}B" if v and float(v)!=0 else "N/A"
+                def fP(v): return f"{float(v)*100:.1f}%" if v and float(v)!=0 else "N/A"
+                def fX(v): return f"{float(v):.2f}×" if v and float(v)!=0 else "N/A"
+                def fF(v): return f"{float(v):.2f}" if v and float(v)!=0 else "N/A"
+                rows_all = [
+                    ("PREÇO","",""),
+                    ("Preço Atual",    f"{price:.2f} {currency}",""),
+                    ("52W Alto",       fF(sg(info,"fiftyTwoWeekHigh",default=0)),""),
+                    ("52W Baixo",      fF(sg(info,"fiftyTwoWeekLow",default=0)),""),
+                    ("EPS TTM",        fF(sg(info,"trailingEps",default=0)),""),
+                    ("EPS Fwd",        fF(sg(info,"forwardEps",default=0)),""),
+                    ("VALUATION","",""),
+                    ("P/E TTM",        fX(sg(info,"trailingPE",default=0)),""),
+                    ("P/E Fwd",        fX(sg(info,"forwardPE",default=0)),""),
+                    ("PEG",            fF(sg(info,"pegRatio",default=0)),""),
+                    ("P/S",            fX(sg(info,"priceToSalesTrailing12Months",default=0)),""),
+                    ("P/B",            fX(sg(info,"priceToBook",default=0)),""),
+                    ("EV/EBITDA",      fX(sg(info,"enterpriseToEbitda",default=0)),""),
+                    ("CRESCIMENTO","",""),
+                    ("Receita YoY",    fP(sg(info,"revenueGrowth",default=0)),""),
+                    ("Lucro YoY",      fP(sg(info,"earningsGrowth",default=0)),""),
+                    ("RENTABILIDADE","",""),
+                    ("Margem Bruta",   fP(sg(info,"grossMargins",default=0)),""),
+                    ("Margem Líquida", fP(sg(info,"profitMargins",default=0)),""),
+                    ("ROE",            fP(sg(info,"returnOnEquity",default=0)),""),
+                    ("ROA",            fP(sg(info,"returnOnAssets",default=0)),""),
+                    ("BALANÇO","",""),
+                    ("Receita",        fB(info.get("totalRevenue",0)),""),
+                    ("EBITDA",         fB(info.get("ebitda",0)),""),
+                    ("Lucro Líq.",     fB(info.get("netIncomeToCommon",0)),""),
+                    ("Free Cash Flow", fB(info.get("freeCashflow",0)),""),
+                    ("Caixa",          fB(info.get("totalCash",0)),""),
+                    ("Dívida Total",   fB(info.get("totalDebt",0)),""),
+                    ("Current Ratio",  fX(sg(info,"currentRatio",default=0)),""),
+                    ("RISCO","",""),
+                    ("Beta",           fF(sg(info,"beta",default=0)),""),
+                    ("Yield",          fP(sg(info,"dividendYield",default=0)),""),
+                    ("ANALISTAS","",""),
+                    ("Preço Alvo",     fF(sg(info,"targetMeanPrice",default=0)),""),
+                    ("Recomendação",   (info.get("recommendationKey","") or "N/A").upper(),""),
                 ]
-                c1,c2 = st.columns(2)
-                for idx,(k,v,_) in enumerate(all_m):
-                    if k.startswith("──"):
-                        for col in [c1,c2]:
-                            col.markdown(f'<div style="font-size:10px; letter-spacing:3px; color:#253040; margin:14px 0 4px; font-family:Space Mono,monospace;">{k}</div>', unsafe_allow_html=True)
+                cm1, cm2 = st.columns(2)
+                for idx, (k, v, _) in enumerate(rows_all):
+                    if not v:  # section header
+                        for col in [cm1, cm2]:
+                            col.markdown(f'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#CBD5E1;margin:14px 0 6px;">{k}</div>', unsafe_allow_html=True)
                     else:
-                        (c1 if idx%2==0 else c2).markdown(
-                            f'<div class="mrow"><span class="label">{k}</span><span class="val">{v}</span></div>',
-                            unsafe_allow_html=True)
+                        (cm1 if idx % 2 == 0 else cm2).markdown(
+                            f'<div class="mrow"><span class="lbl">{k}</span><span class="val">{v}</span></div>',
+                            unsafe_allow_html=True
+                        )
     else:
         st.markdown("""
-            <div style="text-align:center; padding:60px 20px; color:#CBD5E0;">
-                <div style="font-size:2.5em; margin-bottom:16px;">🔬</div>
-                <div style="font-size:14px; font-weight:600; color:#A0AEC0; letter-spacing:2px;">INSERE UM TICKER E CLICA SCAN</div>
-                <div style="font-size:12px; margin-top:10px; color:#CBD5E0;">AAPL · GOOGL · NVDA · MSFT · AMZN · EDP.LS</div>
+            <div class="empty-state fade-up">
+                <div class="icon">◈</div>
+                <div class="title">Análise Fundamentalista</div>
+                <div class="sub">Insere um ticker e clica Scan</div>
+                <div style="margin-top:16px;font-size:12px;color:#CBD5E1;letter-spacing:0.5px;">AAPL &nbsp;·&nbsp; GOOGL &nbsp;·&nbsp; NVDA &nbsp;·&nbsp; MSFT &nbsp;·&nbsp; EDP.LS</div>
             </div>
         """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════
 # FOOTER
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
 st.markdown("""
-    <div style="text-align:center; margin-top:40px; padding:16px 0; border-top:1px solid #E2E8F0;
-        font-size:10px; color:#CBD5E0; letter-spacing:3px;">
-        FARIA QUANT TERMINAL · FOR PERSONAL USE ONLY
+    <div style="text-align:center;padding:28px 0 20px;font-size:11px;color:#CBD5E1;letter-spacing:0.5px;">
+        F|QUANT &nbsp;·&nbsp; Personal Edition
     </div>
 """, unsafe_allow_html=True)
