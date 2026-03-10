@@ -15,74 +15,129 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
-# CSS
+# CSS — Light Modern / T212 style
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.stApp { background-color: #080B10; color: #DDE3EF; }
-.block-container { padding-top: 1.5rem; max-width: 1200px; }
 
-.fq-header { text-align:center; padding:20px 0 14px; border-bottom:1px solid #151C28; margin-bottom:24px; }
-.fq-logo-f { font-family:'Space Mono',monospace; font-size:26px; font-weight:700; color:#FFFFFF; }
-.fq-logo-q { font-family:'Space Mono',monospace; font-size:26px; font-weight:400; color:#00BFFF; }
-.fq-sub    { font-size:10px; color:#2E3A50; letter-spacing:5px; margin-top:4px; font-family:'Space Mono',monospace; }
+.stApp { background-color: #F5F7FA; color: #1A202C; }
+.block-container { padding-top: 1.2rem; max-width: 1100px; }
 
-.card { background:#0D1219; border:1px solid #151C28; border-radius:10px; padding:18px 20px; margin-bottom:12px; }
-.card:hover { border-color:#1E2A3E; }
+/* HEADER */
+.fq-header { text-align:center; padding:18px 0 12px; border-bottom:1px solid #E2E8F0; margin-bottom:20px; }
+.fq-logo-f { font-size:22px; font-weight:800; color:#1A202C; letter-spacing:-0.5px; }
+.fq-logo-q { font-size:22px; font-weight:400; color:#3B82F6; letter-spacing:-0.5px; }
+.fq-sub    { font-size:10px; color:#A0AEC0; letter-spacing:4px; margin-top:3px; }
 
-.mrow { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #111720; font-size:13.5px; }
+/* CARDS */
+.card {
+    background:#FFFFFF;
+    border:1px solid #E2E8F0;
+    border-radius:12px;
+    padding:16px 18px;
+    margin-bottom:10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); border-color:#CBD5E0; }
+
+/* METRIC ROWS */
+.mrow { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #F0F4F8; font-size:13.5px; }
 .mrow:last-child { border-bottom:none; }
-.mrow .label { color:#8899BB; }
-.mrow .val   { font-family:'Space Mono',monospace; font-size:13px; }
-.green { color:#00E87A; } .red { color:#FF4D6A; } .gold { color:#FFD060; } .blue { color:#00BFFF; }
+.mrow .label { color:#718096; }
+.mrow .val   { font-weight:600; font-size:13px; color:#2D3748; }
+.green  { color:#10B981; }
+.red    { color:#EF4444; }
+.gold   { color:#F59E0B; }
+.blue   { color:#3B82F6; }
 
-.sec-title { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:#304060; font-family:'Space Mono',monospace; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #111720; }
+/* SECTION TITLE */
+.sec-title {
+    font-size:10px; letter-spacing:3px; text-transform:uppercase;
+    color:#A0AEC0; font-weight:600;
+    margin-bottom:12px; padding-bottom:8px;
+    border-bottom:1px solid #EDF2F7;
+}
 
-.verdict { padding:16px 24px; border-radius:8px; text-align:center; font-weight:700; font-size:17px; font-family:'Space Mono',monospace; letter-spacing:3px; margin:18px 0; }
+/* VERDICT */
+.verdict { padding:14px 24px; border-radius:10px; text-align:center; font-weight:700; font-size:16px; letter-spacing:2px; margin:16px 0; }
 
-.badge { display:inline-block; background:#0D1219; border:1px solid #1E2A3E; padding:2px 10px; border-radius:20px; font-size:11px; color:#6070A0; margin-left:6px; }
+/* BADGES */
+.badge { display:inline-block; background:#EDF2F7; border:1px solid #E2E8F0; padding:2px 10px; border-radius:20px; font-size:11px; color:#718096; margin-left:6px; }
 
-.stTabs [data-baseweb="tab-list"] { background:transparent; border-radius:0; gap:0; border:none; border-bottom:1px solid #151C28; }
-.stTabs [data-baseweb="tab"]      { color:#556080; font-size:13px; font-weight:500; padding:10px 20px; border-radius:0; letter-spacing:0.5px; }
-.stTabs [aria-selected="true"]    { color:#FFFFFF !important; background:transparent !important; border-bottom:2px solid #00BFFF !important; }
+/* TABS — T212 style */
+.stTabs [data-baseweb="tab-list"] {
+    background:transparent; gap:0; border:none;
+    border-bottom:2px solid #E2E8F0;
+}
+.stTabs [data-baseweb="tab"] {
+    color:#A0AEC0; font-size:13px; font-weight:500;
+    padding:10px 18px; border-radius:0; letter-spacing:0.3px;
+    background:transparent !important;
+}
+.stTabs [aria-selected="true"] {
+    color:#3B82F6 !important;
+    border-bottom:2px solid #3B82F6 !important;
+    font-weight:600 !important;
+}
 
+/* PRIMARY BUTTON */
 div.stButton > button {
     width:100% !important;
-    background:linear-gradient(90deg,#004ECC,#0088FF) !important;
-    color:white !important; font-weight:700; border-radius:6px; border:none;
-    height:2.8em; font-family:'Space Mono',monospace; letter-spacing:1px; font-size:13px;
+    background:#3B82F6 !important;
+    color:white !important; font-weight:600; border-radius:8px; border:none;
+    height:2.6em; font-size:13px; letter-spacing:0.3px;
+    transition: background 0.2s !important;
 }
-div.stButton > button:hover { opacity:0.85 !important; }
+div.stButton > button:hover { background:#2563EB !important; opacity:1 !important; }
 
-/* Small icon buttons (edit/delete) */
-[data-testid="column"] div.stButton > button[kind="secondary"],
+/* ICON BUTTONS (edit/delete) — small columns */
 [data-testid="column"] div.stButton > button {
-    background:transparent !important;
-    border:1px solid #1E2A3E !important;
-    color:#556080 !important;
+    background:#F7FAFC !important;
+    border:1px solid #E2E8F0 !important;
+    color:#A0AEC0 !important;
     font-size:14px !important;
     height:2.2em !important;
-    border-radius:6px !important;
+    border-radius:8px !important;
     letter-spacing:0 !important;
-    font-family: inherit !important;
 }
 [data-testid="column"] div.stButton > button:hover {
-    border-color:#304060 !important;
-    color:#AABBDD !important;
-    opacity:1 !important;
+    background:#EDF2F7 !important;
+    color:#4A5568 !important;
+    border-color:#CBD5E0 !important;
 }
 
-.stTextInput input { background:#0D1219 !important; color:#DDE3EF !important; border:1px solid #1E2A3E !important; border-radius:6px !important; font-size:15px !important; }
-.stTextInput input:focus { border-color:#00BFFF !important; }
-.stNumberInput input { background:#0D1219 !important; color:#DDE3EF !important; border:1px solid #1E2A3E !important; }
-.stSelectbox > div > div { background:#0D1219 !important; border:1px solid #1E2A3E !important; color:#DDE3EF !important; }
-.streamlit-expanderHeader { background:#0D1219 !important; border:1px solid #151C28 !important; border-radius:8px !important; }
+/* INPUTS */
+.stTextInput input {
+    background:#FFFFFF !important; color:#2D3748 !important;
+    border:1px solid #E2E8F0 !important; border-radius:8px !important;
+    font-size:14px !important; box-shadow:0 1px 2px rgba(0,0,0,0.04) !important;
+}
+.stTextInput input:focus { border-color:#3B82F6 !important; box-shadow:0 0 0 3px rgba(59,130,246,0.1) !important; }
+.stNumberInput input { background:#FFFFFF !important; color:#2D3748 !important; border:1px solid #E2E8F0 !important; border-radius:8px !important; }
+.stSelectbox > div > div { background:#FFFFFF !important; border:1px solid #E2E8F0 !important; color:#2D3748 !important; border-radius:8px !important; }
+.streamlit-expanderHeader { background:#FFFFFF !important; border:1px solid #E2E8F0 !important; border-radius:10px !important; color:#4A5568 !important; }
+.streamlit-expanderContent { background:#FAFBFC !important; border:1px solid #E2E8F0 !important; border-top:none !important; border-radius:0 0 10px 10px !important; }
 
+/* CHECKBOX — treino */
+.stCheckbox label { font-size:14px !important; color:#4A5568 !important; }
+.stCheckbox label:hover { color:#1A202C !important; }
+
+/* METRICS */
+[data-testid="metric-container"] {
+    background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px;
+    padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+[data-testid="metric-container"] label { color:#718096 !important; font-size:12px !important; }
+[data-testid="metric-container"] [data-testid="stMetricValue"] { color:#1A202C !important; font-size:1.4em !important; font-weight:700 !important; }
+
+/* SCROLLBAR */
 ::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-thumb { background:#1E2A3E; border-radius:4px; }
+::-webkit-scrollbar-track { background:#F5F7FA; }
+::-webkit-scrollbar-thumb { background:#CBD5E0; border-radius:4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -336,7 +391,7 @@ if "auth" not in st.session_state:
     st.session_state.auth = False
 
 if not st.session_state.auth:
-    st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">TERMINAL · PERSONAL EDITION</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">PERSONAL TERMINAL</div></div>', unsafe_allow_html=True)
     _, col, _ = st.columns([1,1.2,1])
     with col:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -352,9 +407,9 @@ if not st.session_state.auth:
 # ─────────────────────────────────────────────
 # MAIN HEADER
 # ─────────────────────────────────────────────
-st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">TERMINAL · PERSONAL EDITION</div></div>', unsafe_allow_html=True)
+st.markdown('<div class="fq-header"><div><span class="fq-logo-f">F</span><span class="fq-logo-q">|QUANT</span></div><div class="fq-sub">PERSONAL TERMINAL</div></div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["PATRIMÓNIO", "FLUXO DE CAIXA", "OBJETIVOS", "ANÁLISE DE AÇÕES"])
+tab1, tab2, tab3, tab4 = st.tabs(["PATRIMÓNIO", "FLUXO DE CAIXA", "PLANO TREINO", "ANÁLISE DE AÇÕES"])
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 1 — PATRIMÓNIO
@@ -572,12 +627,14 @@ with tab2:
             st.rerun()
 
     # ── History ──────────────────────────────────────────────────────────
+    if "edit_flx_idx" not in st.session_state:
+        st.session_state.edit_flx_idx = None
+
     for i, r in df_f.iterrows():
         net  = float(r["Entradas"]) - float(r["Saidas"])
         taxa = (net/float(r["Entradas"])*100) if float(r["Entradas"]) > 0 else 0
-        nc   = "#00E87A" if net >= 0 else "#FF4D6A"
+        nc   = "#10B981" if net >= 0 else "#EF4444"
 
-        # category detail for this month
         cat_detail = ""
         if not df_desp.empty and "Categoria" in df_desp.columns:
             mc = df_desp[(df_desp["Mês"]==r["Mês"]) & (df_desp["Categoria"] != "_total_")]
@@ -585,122 +642,239 @@ with tab2:
                 parts = [f'{row["Categoria"]}: {float(row["Saidas"]):,.0f}€' for _, row in mc.iterrows() if float(row["Saidas"]) > 0]
                 cat_detail = " · ".join(parts[:5])
 
-        c_card, c_del = st.columns([11,1])
-        with c_card:
+        if st.session_state.edit_flx_idx == i:
+            # ── EDIT MODE ────────────────────────────────────────────────
             st.markdown(f"""
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-family:'Space Mono',monospace; font-weight:700; color:#AABBDD;">{r["Mês"]}</span>
-                        <span style="color:{nc}; font-family:'Space Mono',monospace; font-weight:700;">{net:,.2f} € poupados ({taxa:.1f}%)</span>
-                    </div>
-                    <div style="font-size:11px; color:#304060; margin-top:5px;">
-                        Entradas: {float(r["Entradas"]):,.0f}€ · Saídas: {float(r["Saidas"]):,.0f}€
-                    </div>
-                    {'<div style="font-size:11px; color:#253040; margin-top:3px;">'+cat_detail+'</div>' if cat_detail else ''}
+                <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:14px 18px; margin-bottom:4px;">
+                    <div style="font-size:10px; color:#3B82F6; letter-spacing:2px; margin-bottom:10px; font-weight:600;">A EDITAR — {r["Mês"]}</div>
                 </div>
             """, unsafe_allow_html=True)
-        with c_del:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🗑", key=f"df_{i}"):
-                save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
+            fe1, fe2 = st.columns(2)
+            new_ent = fe1.number_input("Entradas (€)", value=float(r["Entradas"]), format="%.2f", key=f"fe_ent_{i}")
+            new_sai = fe2.number_input("Saídas (€)",   value=float(r["Saidas"]),   format="%.2f", key=f"fe_sai_{i}")
+            fb1, fb2 = st.columns(2)
+            if fb1.button("Guardar", key=f"fesave_{i}"):
+                df_f.at[i,"Entradas"] = new_ent
+                df_f.at[i,"Saidas"]   = new_sai
+                save_db(df_f, "poupanca")
+                st.session_state.edit_flx_idx = None
                 st.rerun()
+            if fb2.button("Cancelar", key=f"fecancel_{i}"):
+                st.session_state.edit_flx_idx = None
+                st.rerun()
+        else:
+            # ── VIEW MODE ────────────────────────────────────────────────
+            c_card, c_edit, c_del = st.columns([10, 1, 1])
+            with c_card:
+                st.markdown(f"""
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:700; color:#2D3748;">{r["Mês"]}</span>
+                            <span style="color:{nc}; font-weight:700;">{net:,.2f} € poupados ({taxa:.1f}%)</span>
+                        </div>
+                        <div style="font-size:11px; color:#A0AEC0; margin-top:5px;">
+                            Entradas: {float(r["Entradas"]):,.0f}€ · Saídas: {float(r["Saidas"]):,.0f}€
+                        </div>
+                        {'<div style="font-size:11px; color:#CBD5E0; margin-top:3px;">'+cat_detail+'</div>' if cat_detail else ''}
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_edit:
+                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                if st.button("✏️", key=f"fedit_{i}"):
+                    st.session_state.edit_flx_idx = i
+                    st.rerun()
+            with c_del:
+                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                if st.button("🗑", key=f"df_{i}"):
+                    save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
+                    st.rerun()
 
 # ══════════════════════════════════════════════════════════════════
-# TAB 3 — OBJETIVOS
+# TAB 3 — PLANO TREINO
 # ══════════════════════════════════════════════════════════════════
 with tab3:
-    df_obj  = load_db("objetivos")
-    df_p2   = load_db("patrimonio")
-    pat_now = float(df_p2["Total"].iloc[0]) if not df_p2.empty else 0
-    df_fx   = load_db("poupanca")
-    avg_sav = 0
-    if not df_fx.empty and "Entradas" in df_fx.columns:
-        avg_sav = float((df_fx["Entradas"] - df_fx["Saidas"]).mean())
 
-    st.markdown(f"""
-        <div style="text-align:center; padding:16px 0 24px;">
-            <div style="font-size:11px; color:#304060; letter-spacing:4px; font-family:'Space Mono',monospace; margin-bottom:8px;">PATRIMÓNIO ATUAL</div>
-            <div style="font-size:2em; font-weight:700; color:#00E87A; font-family:'Space Mono',monospace;">{pat_now:,.0f} €</div>
-            {'<div style="font-size:12px; color:#556080; margin-top:6px;">Poupança média: '+f'{avg_sav:,.0f}€/mês</div>' if avg_sav > 0 else ''}
+    # Training plan data
+    TREINO = {
+        "Segunda — Base & Estabilidade": {
+            "cor": "#3B82F6",
+            "aquecimento": [
+                "Círculos de anca",
+                "Rotação torácica",
+                "10 agachamentos lentos",
+                "10 scapular push-ups",
+            ],
+            "exercicios": [
+                ("Goblet Squat",                  "3x 10-12",        "Progressão lenta de carga · foco em controlo e profundidade"),
+                ("Romanian Deadlift",              "3x 10",           "Kettlebell ou barra · foco no alongamento posterior"),
+                ("Passadas atrás (Reverse Lunges)","3x 8 cada perna", "Excelente para estabilidade da anca"),
+                ("Prancha Frontal",                "3x 30-45s",       ""),
+                ("Side Plank",                     "2x cada lado",    ""),
+            ],
+            "nota": "Este treino reforça anca e core — vai ajudar muito a tua estrutura na zona da anca."
+        },
+        "Quarta — Ombros & Estabilidade Superior": {
+            "cor": "#8B5CF6",
+            "aquecimento": [
+                "Mobilidade ombro",
+                "Elástico (rotação externa)",
+            ],
+            "exercicios": [
+                ("Overhead Press leve",      "3x 10",    "Halter ou máquina · controlado, sem ego lift"),
+                ("Elevações Laterais",       "3x 12-15", ""),
+                ("Face Pulls",               "3x 12-15", "Fundamental para proteger o ombro"),
+                ("Remo Unilateral",          "3x 10 cada lado", "Ótimo para estabilidade do tronco"),
+                ("Hiperextensão",            "3x 12",    ""),
+            ],
+            "nota": ""
+        },
+        "Sexta — Peito & Costas (Principal)": {
+            "cor": "#10B981",
+            "aquecimento": [],
+            "exercicios": [
+                ("Chest Press",             "3x 12/10/8",  "Progressão de carga"),
+                ("Remo Máquina",            "3x 12/10/8",  ""),
+                ("Press Inclinado",         "3x 10/8/6",   ""),
+                ("Dorsal Máquina / Barras", "3x 10-12",    ""),
+                ("Finisher opcional",       "Flexões ou 5-8 barras", ""),
+            ],
+            "nota": "Aqui podes usar a pirâmide progressiva."
+        },
+    }
+
+    # session state for edit mode
+    if "treino_edit" not in st.session_state:
+        st.session_state.treino_edit = False
+    if "treino_data" not in st.session_state:
+        # load custom plan from file if exists, else use default
+        treino_path = f"{DATA_DIR}/treino_custom.csv"
+        if os.path.exists(treino_path):
+            st.session_state.treino_data = pd.read_csv(treino_path).to_dict("records")
+        else:
+            st.session_state.treino_data = None
+
+    # checklist state — reset weekly (key = week number)
+    week_key = f"treino_checks_{datetime.now().isocalendar()[1]}"
+    if week_key not in st.session_state:
+        st.session_state[week_key] = {}
+
+    # header
+    st.markdown("""
+        <div style="margin-bottom:20px;">
+            <div style="font-size:18px; font-weight:700; color:#1A202C;">Plano de Treino Semanal</div>
+            <div style="font-size:13px; color:#A0AEC0; margin-top:3px;">3x por semana · Segunda · Quarta · Sexta</div>
         </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("Definir Novo Objetivo"):
-        o_nome = st.text_input("Nome do Objetivo", placeholder="ex: 100K Club, Casa, Reforma Antecipada...")
-        oc1,oc2 = st.columns(2)
-        o_meta = oc1.number_input("Meta (€)", min_value=0.0, format="%.0f")
-        o_ano  = oc2.number_input("Ano Alvo", min_value=2024, max_value=2060, value=datetime.now().year+3, step=1)
-        o_emoji = st.selectbox("Ícone", ["🎯","🏠","🚀","🏖️","💎","🏎️","📚","💰","🌍","🔥"])
-        if st.button("CRIAR OBJETIVO"):
-            if o_nome and o_meta > 0:
-                row = pd.DataFrame([{"Nome":o_nome,"Meta":o_meta,"Ano":int(o_ano),"Emoji":o_emoji}])
-                save_db(pd.concat([df_obj, row], ignore_index=True), "objetivos")
-                st.success("✅  Objetivo criado!")
-                st.rerun()
+    # edit toggle
+    col_h, col_e = st.columns([10,1])
+    with col_e:
+        if st.button("✏️", key="treino_edit_btn"):
+            st.session_state.treino_edit = not st.session_state.treino_edit
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    if not df_obj.empty:
-        for i, obj in df_obj.iterrows():
-            meta      = float(obj["Meta"])
-            prog      = min(pat_now/meta*100, 100) if meta > 0 else 0
-            restante  = max(meta - pat_now, 0)
-            anos_left = int(obj["Ano"]) - datetime.now().year
-            months_needed = int(restante/avg_sav) if avg_sav > 0 and restante > 0 else None
-            on_track  = months_needed is not None and months_needed <= anos_left*12
-
-            bc = "#00E87A" if prog >= 75 else "#FFD060" if prog >= 40 else "#00BFFF"
-            if prog >= 100: bc = "#00E87A"
-
-            if prog >= 100:
-                track = "🎉 OBJETIVO ATINGIDO!"
-            elif months_needed is not None:
-                track = f"✅ No caminho certo — aprox. {months_needed} meses" if on_track else f"⚠️ Ao ritmo atual: {months_needed} meses (objetivo: {anos_left*12})"
-            else:
-                track = ""
-
-            c_obj, c_del = st.columns([11,1])
-            with c_obj:
-                st.markdown(f"""
-                    <div class="card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                            <div>
-                                <span style="font-size:1.3em;">{obj["Emoji"]}</span>
-                                <span style="font-size:1.05em; font-weight:700; color:#DDE3EF; margin-left:8px;">{obj["Nome"]}</span>
-                                <span style="font-size:11px; color:#304060; margin-left:8px;">até {int(obj["Ano"])}</span>
-                            </div>
-                            <span style="font-family:'Space Mono',monospace; font-weight:700; color:{bc}; font-size:1.1em;">{prog:.1f}%</span>
-                        </div>
-                        <div style="background:#111720; border-radius:20px; height:10px; margin-bottom:10px;">
-                            <div style="width:{prog:.1f}%; height:10px; border-radius:20px; background:{bc};"></div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:12px; color:#556080;">
-                            <span>{pat_now:,.0f}€ atual</span>
-                            <span style="color:#304060;">faltam {restante:,.0f}€</span>
-                            <span>{meta:,.0f}€ meta</span>
-                        </div>
-                        {'<div style="font-size:12px; color:#556080; margin-top:8px;">'+track+'</div>' if track else ''}
-                    </div>
-                """, unsafe_allow_html=True)
-            with c_del:
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🗑", key=f"do_{i}"):
-                    save_db(df_obj.drop(i).reset_index(drop=True), "objetivos")
-                    st.rerun()
-    else:
+    if st.session_state.treino_edit:
         st.markdown("""
-            <div style="text-align:center; padding:50px 20px; color:#253040;">
-                <div style="font-size:2.5em; margin-bottom:12px;">🎯</div>
-                <div style="font-family:'Space Mono',monospace; font-size:13px; letter-spacing:2px;">SEM OBJETIVOS DEFINIDOS</div>
-                <div style="font-size:12px; margin-top:8px; color:#1E2A3E;">Define uma meta financeira para acompanhar o progresso</div>
+            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
+                <div style="font-size:12px; color:#3B82F6; font-weight:600;">MODO EDIÇÃO — edita o texto de cada exercício diretamente abaixo e guarda.</div>
             </div>
         """, unsafe_allow_html=True)
+
+        edited = {}
+        for dia, dados in TREINO.items():
+            st.markdown(f"**{dia}**")
+            edited[dia] = []
+            for idx, (nome, series, desc) in enumerate(dados["exercicios"]):
+                c1, c2, c3 = st.columns([3,2,4])
+                n = c1.text_input("Exercício", value=nome,   key=f"te_n_{dia}_{idx}", label_visibility="collapsed")
+                s = c2.text_input("Séries",    value=series, key=f"te_s_{dia}_{idx}", label_visibility="collapsed")
+                d = c3.text_input("Notas",     value=desc,   key=f"te_d_{dia}_{idx}", label_visibility="collapsed")
+                edited[dia].append((n, s, d))
+            st.markdown("---")
+
+        if st.button("GUARDAR PLANO"):
+            rows = []
+            for dia, exs in edited.items():
+                for nome, series, desc in exs:
+                    rows.append({"dia": dia, "nome": nome, "series": series, "desc": desc})
+            pd.DataFrame(rows).to_csv(f"{DATA_DIR}/treino_custom.csv", index=False)
+            st.session_state.treino_data = rows
+            st.session_state.treino_edit = False
+            st.success("Plano guardado!")
+            st.rerun()
+
+    else:
+        # DISPLAY MODE — checklist cards per day
+        for dia, dados in TREINO.items():
+            cor = dados["cor"]
+
+            # load custom exercises if saved
+            if st.session_state.treino_data:
+                exs = [(r["nome"], r["series"], r["desc"])
+                       for r in st.session_state.treino_data if r["dia"] == dia]
+            else:
+                exs = dados["exercicios"]
+
+            # count done
+            done = sum(1 for idx in range(len(exs))
+                       if st.session_state[week_key].get(f"{dia}_{idx}", False))
+            total_ex = len(exs)
+            pct = int(done/total_ex*100) if total_ex > 0 else 0
+            done_color = "#10B981" if pct == 100 else "#3B82F6" if pct > 0 else "#E2E8F0"
+
+            st.markdown(f"""
+                <div class="card" style="border-left:4px solid {cor}; margin-bottom:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="font-weight:700; font-size:15px; color:#1A202C;">{dia}</span>
+                        <span style="font-size:12px; font-weight:600; color:{done_color}; background:{'#D1FAE5' if pct==100 else '#EFF6FF' if pct>0 else '#F7FAFC'}; padding:3px 10px; border-radius:20px;">{done}/{total_ex} feitos</span>
+                    </div>
+                    {"" if not dados["aquecimento"] else f'<div style="font-size:11px; color:#A0AEC0; margin-bottom:8px; font-weight:600; letter-spacing:1px;">AQUECIMENTO (5-7 min)</div><div style="font-size:12px; color:#718096; margin-bottom:10px;">' + " · ".join(dados["aquecimento"]) + "</div>"}
+                </div>
+            """, unsafe_allow_html=True)
+
+            for idx, (nome, series, desc) in enumerate(exs):
+                check_key = f"{dia}_{idx}"
+                checked = st.session_state[week_key].get(check_key, False)
+                col_check, col_info = st.columns([1, 11])
+                with col_check:
+                    val = st.checkbox("", value=checked, key=f"chk_{dia}_{idx}_{week_key}")
+                    st.session_state[week_key][check_key] = val
+                with col_info:
+                    strike = "line-through; opacity:0.45" if val else "none"
+                    st.markdown(f"""
+                        <div style="padding:6px 0; border-bottom:1px solid #F0F4F8;">
+                            <span style="font-weight:600; color:#2D3748; text-decoration:{strike}; font-size:14px;">{nome}</span>
+                            <span style="color:#3B82F6; font-size:12px; font-weight:600; margin-left:10px;">{series}</span>
+                            {'<div style="font-size:12px; color:#A0AEC0; margin-top:2px;">'+desc+'</div>' if desc else ''}
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            if dados["nota"]:
+                st.markdown(f"""
+                    <div style="background:#F0FDF4; border-radius:8px; padding:10px 14px; margin:8px 0 16px; font-size:12px; color:#059669; border-left:3px solid #10B981;">
+                        {dados["nota"]}
+                    </div>
+                """, unsafe_allow_html=True)
+
+            # progress bar
+            bar_w = pct
+            st.markdown(f"""
+                <div style="background:#EDF2F7; border-radius:20px; height:5px; margin-bottom:18px;">
+                    <div style="width:{bar_w}%; height:5px; border-radius:20px; background:{done_color}; transition:width 0.4s;"></div>
+                </div>
+            """, unsafe_allow_html=True)
+
+        # reset week button
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Reiniciar Checklist da Semana"):
+            st.session_state[week_key] = {}
+            st.rerun()
+
 
 # ══════════════════════════════════════════════════════════════════
 # TAB 4 — ANÁLISE DE AÇÕES
 # ══════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("<div style='margin-bottom:6px; font-size:12px; color:#304060; letter-spacing:2px;'>TICKER SYMBOL</div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:6px; font-size:12px; color:#A0AEC0; letter-spacing:2px; font-weight:600;'>TICKER SYMBOL</div>", unsafe_allow_html=True)
     col_inp, col_btn = st.columns([5,1])
     with col_inp:
         ticker_input = st.text_input(
@@ -858,10 +1032,10 @@ with tab4:
                             unsafe_allow_html=True)
     else:
         st.markdown("""
-            <div style="text-align:center; padding:60px 20px; color:#253040;">
+            <div style="text-align:center; padding:60px 20px; color:#CBD5E0;">
                 <div style="font-size:2.5em; margin-bottom:16px;">🔬</div>
-                <div style="font-family:'Space Mono',monospace; font-size:14px; letter-spacing:2px;">INSERE UM TICKER E CLICA SCAN</div>
-                <div style="font-size:12px; margin-top:10px; color:#1E2A3E;">AAPL · GOOGL · NVDA · MSFT · AMZN · EDP.LS</div>
+                <div style="font-size:14px; font-weight:600; color:#A0AEC0; letter-spacing:2px;">INSERE UM TICKER E CLICA SCAN</div>
+                <div style="font-size:12px; margin-top:10px; color:#CBD5E0;">AAPL · GOOGL · NVDA · MSFT · AMZN · EDP.LS</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -869,9 +1043,8 @@ with tab4:
 # FOOTER
 # ─────────────────────────────────────────────
 st.markdown("""
-    <div style="text-align:center; margin-top:40px; padding:16px 0; border-top:1px solid #101520;
-        font-size:10px; color:#1E2A3E; font-family:'Space Mono',monospace; letter-spacing:3px;">
+    <div style="text-align:center; margin-top:40px; padding:16px 0; border-top:1px solid #E2E8F0;
+        font-size:10px; color:#CBD5E0; letter-spacing:3px;">
         FARIA QUANT TERMINAL · FOR PERSONAL USE ONLY
     </div>
 """, unsafe_allow_html=True)
-
