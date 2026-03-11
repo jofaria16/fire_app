@@ -798,7 +798,6 @@ if not st.session_state.auth:
     n   = len(pin)
     err = st.session_state.pin_error
 
-    # Dots
     dot_html = "".join([
         f'<div class="pin-dot {"filled" if i < n else ""} {"error" if err else ""}"></div>'
         for i in range(4)
@@ -810,43 +809,41 @@ if not st.session_state.auth:
             <div class="pin-subtitle">Introduce o teu PIN para continuar</div>
             <div class="pin-dots">{dot_html}</div>
         </div>
+        {'<div class="pin-error-msg">PIN incorreto. Tenta novamente.</div>' if err else ''}
     """, unsafe_allow_html=True)
 
-    # Keypad — each row wrapped in .pin-row so scoped CSS applies
-    keymap = [
-        [("1","1"), ("2","2"), ("3","3")],
-        [("4","4"), ("5","5"), ("6","6")],
-        [("7","7"), ("8","8"), ("9","9")],
-        [("","_"),  ("0","0"), ("⌫","del")],
-    ]
-    for row in keymap:
-        st.markdown('<div class="pin-row">', unsafe_allow_html=True)
-        cols = st.columns(3)
-        for col, (label, val) in zip(cols, row):
-            with col:
-                if val == "_":
-                    st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
-                elif st.button(label, key=f"pin_{val}"):
-                    if val == "del":
-                        st.session_state.pin_input = pin[:-1]
-                        st.session_state.pin_error = False
-                    else:
-                        new_pin = pin + val
-                        if len(new_pin) <= 4:
-                            st.session_state.pin_input = new_pin
+    # Center column trick: pad | keypad | pad
+    _, mid, _ = st.columns([1, 1, 1])
+    with mid:
+        keymap = [
+            [("1","1"), ("2","2"), ("3","3")],
+            [("4","4"), ("5","5"), ("6","6")],
+            [("7","7"), ("8","8"), ("9","9")],
+            [("","_"),  ("0","0"), ("⌫","del")],
+        ]
+        for row in keymap:
+            c1, c2, c3 = st.columns(3)
+            for col, (label, val) in zip([c1, c2, c3], row):
+                with col:
+                    if val == "_":
+                        st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
+                    elif st.button(label, key=f"pin_{val}"):
+                        if val == "del":
+                            st.session_state.pin_input = pin[:-1]
                             st.session_state.pin_error = False
-                            if len(new_pin) == 4:
-                                if new_pin == CORRECT_PIN:
-                                    st.session_state.auth = True
-                                    st.session_state.pin_input = ""
-                                else:
-                                    st.session_state.pin_error = True
-                                    st.session_state.pin_input = ""
-                    st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    if err:
-        st.markdown('<div class="pin-error-msg">PIN incorreto. Tenta novamente.</div>', unsafe_allow_html=True)
+                        else:
+                            new_pin = pin + val
+                            if len(new_pin) <= 4:
+                                st.session_state.pin_input = new_pin
+                                st.session_state.pin_error = False
+                                if len(new_pin) == 4:
+                                    if new_pin == CORRECT_PIN:
+                                        st.session_state.auth = True
+                                        st.session_state.pin_input = ""
+                                    else:
+                                        st.session_state.pin_error = True
+                                        st.session_state.pin_input = ""
+                        st.rerun()
 
     st.stop()
 
