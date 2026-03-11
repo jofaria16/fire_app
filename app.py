@@ -499,6 +499,62 @@ label[data-testid="stWidgetLabel"] p {
 .empty-state .icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
 .empty-state .title { font-size: 15px; font-weight: 700; color: #64748B; margin-bottom: 6px; }
 .empty-state .sub   { font-size: 13px; }
+
+/* ─── PIN SCREEN ──────────────────────────────────────────────────── */
+.pin-screen {
+    display: flex; flex-direction: column;
+    align-items: center; padding: 64px 0 8px;
+}
+.pin-logo {
+    font-size: 28px; font-weight: 900; color: #0F172A;
+    letter-spacing: -1px; margin-bottom: 6px;
+}
+.pin-logo span { color: #2563EB; }
+.pin-subtitle {
+    font-size: 14px; color: #94A3B8; font-weight: 400;
+    margin-bottom: 48px;
+}
+.pin-dots {
+    display: flex; gap: 18px; margin-bottom: 40px;
+    justify-content: center;
+}
+.pin-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid #CBD5E1; background: transparent;
+    transition: all 0.12s ease;
+}
+.pin-dot.filled { background: #0F172A; border-color: #0F172A; transform: scale(1.1); }
+.pin-dot.error  { background: #EF4444; border-color: #EF4444; }
+.pin-error-msg  {
+    text-align: center; color: #EF4444;
+    font-size: 13px; font-weight: 600; margin-top: 12px;
+}
+
+/* ─── PIN KEYPAD BUTTONS ──────────────────────────────────────────── */
+/* Scoped override: only applies inside .pin-row wrappers */
+.pin-row { display: flex; justify-content: center; gap: 0; margin-bottom: 4px; }
+.pin-row [data-testid="column"] { flex: 0 0 100px !important; max-width: 100px !important; }
+.pin-row div.stButton > button {
+    width: 72px !important; height: 72px !important;
+    border-radius: 50% !important;
+    background: #F1F5F9 !important;
+    color: #0F172A !important;
+    font-size: 22px !important; font-weight: 500 !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07) !important;
+    padding: 0 !important; letter-spacing: 0 !important;
+    margin: 0 auto !important;
+    transition: background 0.1s, transform 0.1s !important;
+}
+.pin-row div.stButton > button:hover {
+    background: #E2E8F0 !important;
+    transform: scale(0.93) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    opacity: 1 !important;
+}
+.pin-row div.stButton > button:active {
+    background: #CBD5E1 !important; transform: scale(0.88) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -742,11 +798,11 @@ if not st.session_state.auth:
     n   = len(pin)
     err = st.session_state.pin_error
 
+    # Dots
     dot_html = "".join([
         f'<div class="pin-dot {"filled" if i < n else ""} {"error" if err else ""}"></div>'
         for i in range(4)
     ])
-    err_msg = "PIN incorreto. Tenta novamente." if err else ""
 
     st.markdown(f"""
         <div class="pin-screen">
@@ -756,19 +812,20 @@ if not st.session_state.auth:
         </div>
     """, unsafe_allow_html=True)
 
-    keys = [
-        ("1","1"),("2","2"),("3","3"),
-        ("4","4"),("5","5"),("6","6"),
-        ("7","7"),("8","8"),("9","9"),
-        ("","empty"),("0","0"),("⌫","del"),
+    # Keypad — each row wrapped in .pin-row so scoped CSS applies
+    keymap = [
+        [("1","1"), ("2","2"), ("3","3")],
+        [("4","4"), ("5","5"), ("6","6")],
+        [("7","7"), ("8","8"), ("9","9")],
+        [("","_"),  ("0","0"), ("⌫","del")],
     ]
-    rows = [keys[i:i+3] for i in range(0, len(keys), 3)]
-    for row in rows:
+    for row in keymap:
+        st.markdown('<div class="pin-row">', unsafe_allow_html=True)
         cols = st.columns(3)
         for col, (label, val) in zip(cols, row):
             with col:
-                if val == "empty":
-                    st.markdown("<div style='height:60px'></div>", unsafe_allow_html=True)
+                if val == "_":
+                    st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
                 elif st.button(label, key=f"pin_{val}"):
                     if val == "del":
                         st.session_state.pin_input = pin[:-1]
@@ -778,7 +835,7 @@ if not st.session_state.auth:
                         if len(new_pin) <= 4:
                             st.session_state.pin_input = new_pin
                             st.session_state.pin_error = False
-                            if len(new_pin) == 4:  # auto-submit ao 4º dígito
+                            if len(new_pin) == 4:
                                 if new_pin == CORRECT_PIN:
                                     st.session_state.auth = True
                                     st.session_state.pin_input = ""
@@ -786,9 +843,11 @@ if not st.session_state.auth:
                                     st.session_state.pin_error = True
                                     st.session_state.pin_input = ""
                     st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    if err_msg:
-        st.markdown(f'<div class="pin-error-msg">{err_msg}</div>', unsafe_allow_html=True)
+    if err:
+        st.markdown('<div class="pin-error-msg">PIN incorreto. Tenta novamente.</div>', unsafe_allow_html=True)
+
     st.stop()
 
 
