@@ -615,6 +615,7 @@ _defaults = {
     "auth": False, "pin_input": "", "pin_error": False,
     "edit_pat": None, "edit_flx": None,
     "ticker": "", "treino_edit": False,
+    "selected_week": datetime.now().isocalendar()[1],
 }
 for k, v in _defaults.items():
     if k not in st.session_state:
@@ -1200,6 +1201,7 @@ with tab2:
 
 
 # ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 # ▌TAB 3 — PLANO TREINO
 # ══════════════════════════════════════════════════════════════════════
 with tab3:
@@ -1209,73 +1211,127 @@ with tab3:
         try:
             df_tc = pd.read_csv(treino_path)
             for dia in TREINO:
-                rows = df_tc[df_tc["dia"] == dia]
-                if not rows.empty:
-                    custom_plan[dia] = [(r["nome"], r["series"], r["desc"]) for _, r in rows.iterrows()]
+                rows_dia = df_tc[df_tc["dia"] == dia]
+                if not rows_dia.empty:
+                    custom_plan[dia] = [(r["nome"], r["series"], r["desc"]) for _, r in rows_dia.iterrows()]
         except: pass
 
-    # Weekly progress header
-    total_ex   = sum(len(TREINO[d]["ex"]) for d in TREINO)
-    total_done = sum(1 for d in TREINO for idx in range(len(TREINO[d]["ex"]))
-                     if st.session_state[week_key].get(f"{d}_{idx}", False))
+    # ── Week selector ─────────────────────────────────────────────────
+    current_iso = datetime.now().isocalendar()[1]
+    current_year = datetime.now().year
+
+    # Build list of last 10 weeks (most recent first)
+    week_options = []
+    for delta in range(10):
+        wn = current_iso - delta
+        yr = current_year
+        if wn <= 0:
+            wn += 52
+            yr -= 1
+        label = "Semana " + str(wn) + (" (atual)" if delta == 0 else "")
+        week_options.append((label, wn))
+
+    week_labels = [w[0] for w in week_options]
+    week_nums   = [w[1] for w in week_options]
+
+    # Find index of currently selected week
+    sel_wn = st.session_state.selected_week
+    sel_idx = week_nums.index(sel_wn) if sel_wn in week_nums else 0
+
+    sel_label = st.selectbox(
+        "Semana",
+        options=week_labels,
+        index=sel_idx,
+        key="week_selector",
+        label_visibility="collapsed",
+    )
+    chosen_wn  = week_nums[week_labels.index(sel_label)]
+    chosen_key = "w" + str(chosen_wn)
+
+    # Persist selection and init state for chosen week
+    if st.session_state.selected_week != chosen_wn:
+        st.session_state.selected_week = chosen_wn
+        st.session_state.treino_edit   = False
+        st.rerun()
+
+    if chosen_key not in st.session_state:
+        st.session_state[chosen_key] = {}
+
+    # ── Weekly progress card ───────────────────────────────────────────
+    total_ex   = sum(len(custom_plan.get(d, TREINO[d]["ex"])) for d in TREINO)
+    total_done = sum(
+        1 for d in TREINO
+        for idx in range(len(custom_plan.get(d, TREINO[d]["ex"])))
+        if st.session_state[chosen_key].get(d + "_" + str(idx), False)
+    )
     wpct = int(total_done / total_ex * 100) if total_ex > 0 else 0
     wc   = "#059669" if wpct == 100 else "#2563EB" if wpct > 0 else "#CBD5E1"
+    wlbl = "✓ Semana completa!" if wpct == 100 else str(total_done) + " de " + str(total_ex) + " exercícios"
+
+    card_html = (
+        '<div class="card" style="margin-bottom:14px;">'
+        + '<div class="card-body">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+        + '<div>'
+        + '<div style="font-size:16px;font-weight:800;color:#0F172A;">Semana ' + str(chosen_wn) + ('&nbsp;<span style="font-size:11px;font-weight:600;color:#2563EB;background:#EFF6FF;padding:2px 8px;border-radius:20px;">atual</span>' if chosen_wn == current_iso else '') + '</div>'
+        + '<div style="font-size:12px;color:#94A3B8;margin-top:2px;">3× semana &nbsp;·&nbsp; Seg · Qua · Sex</div>'
+        + '</div>'
+        + '<div style="font-size:28px;font-weight:900;color:' + wc + ';letter-spacing:-1px;">' + str(wpct) + '<span style="font-size:0.5em;opacity:0.6;font-weight:500;">%</span></div>'
+        + '</div>'
+        + '<div class="prog-track">'
+        + '<div class="prog-fill" style="width:' + str(wpct) + '%;background:' + wc + ';"></div>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#94A3B8;margin-top:6px;">' + wlbl + '</div>'
+        + '</div></div>'
+    )
 
     ch, ce = st.columns([9, 1])
     with ch:
-        st.markdown(f"""
-            <div class="card fade-up" style="margin-bottom:14px;">
-                <div class="card-body">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div>
-                            <div style="font-size:16px;font-weight:800;color:#0F172A;">Semana {datetime.now().isocalendar()[1]}</div>
-                            <div style="font-size:12px;color:#94A3B8;margin-top:2px;">3× semana &nbsp;·&nbsp; Seg · Qua · Sex</div>
-                        </div>
-                        <div style="font-size:28px;font-weight:900;color:{wc};letter-spacing:-1px;">{wpct}<span style="font-size:0.5em;opacity:0.6;font-weight:500;">%</span></div>
-                    </div>
-                    <div class="prog-track">
-                        <div class="prog-fill" style="width:{wpct}%;background:{wc};"></div>
-                    </div>
-                    <div style="font-size:11px;color:#94A3B8;margin-top:4px;">{total_done} de {total_ex} exercícios concluídos esta semana</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(card_html, unsafe_allow_html=True)
     with ce:
         st.markdown("<div style='margin-top:20px'></div>", unsafe_allow_html=True)
         if st.button("✏️", key="btn_treino_edit"):
-            st.session_state.treino_edit = not st.session_state.treino_edit; st.rerun()
+            st.session_state.treino_edit = not st.session_state.treino_edit
+            st.rerun()
 
+    # ── Edit mode ─────────────────────────────────────────────────────
     if st.session_state.treino_edit:
-        # EDIT MODE
         st.markdown('<div class="edit-bar">✏ Modo edição — altera nome, séries ou notas</div>', unsafe_allow_html=True)
         edited = {}
         for dia, dados in TREINO.items():
             exs = custom_plan.get(dia, dados["ex"])
-            st.markdown(f'<div style="font-size:13px;font-weight:800;color:{dados["cor"]};margin:16px 0 8px;letter-spacing:0.3px;">{dia} — {dados["sub"]}</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div style="font-size:13px;font-weight:800;color:' + dados["cor"] + ';margin:16px 0 8px;">'
+                + dia + ' — ' + dados["sub"] + '</div>',
+                unsafe_allow_html=True
+            )
             edited[dia] = []
             for idx, (nome, series, desc) in enumerate(exs):
                 c1, c2, c3 = st.columns([3, 2, 4])
-                n = c1.text_input("",value=nome,   key=f"tn_{dia}_{idx}", placeholder="Nome")
-                s = c2.text_input("",value=series, key=f"ts_{dia}_{idx}", placeholder="Séries")
-                d = c3.text_input("",value=desc,   key=f"td_{dia}_{idx}", placeholder="Notas")
+                n = c1.text_input("", value=nome,   key="tn_" + dia + "_" + str(idx), placeholder="Nome")
+                s = c2.text_input("", value=series, key="ts_" + dia + "_" + str(idx), placeholder="Séries")
+                d = c3.text_input("", value=desc,   key="td_" + dia + "_" + str(idx), placeholder="Notas")
                 edited[dia].append((n, s, d))
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         sc1, sc2 = st.columns(2)
         with sc1:
             if st.button("✓ Guardar Plano", key="save_treino", type="primary"):
-                rows = [{"dia":dia,"nome":n,"series":s,"desc":d} for dia,exs in edited.items() for n,s,d in exs]
-                pd.DataFrame(rows).to_csv(treino_path, index=False)
-                st.session_state.treino_edit = False; st.rerun()
+                save_rows = [{"dia": dia, "nome": n, "series": s, "desc": d}
+                             for dia, exs in edited.items() for n, s, d in exs]
+                pd.DataFrame(save_rows).to_csv(treino_path, index=False)
+                st.session_state.treino_edit = False
+                st.rerun()
         with sc2:
             if st.button("Cancelar", key="cancel_treino"):
-                st.session_state.treino_edit = False; st.rerun()
+                st.session_state.treino_edit = False
+                st.rerun()
 
     else:
-        # DISPLAY MODE
+        # ── Display mode ──────────────────────────────────────────────
         for dia, dados in TREINO.items():
             exs   = custom_plan.get(dia, dados["ex"])
             cor   = dados["cor"]
-            done  = sum(1 for idx in range(len(exs)) if st.session_state[week_key].get(f"{dia}_{idx}", False))
+            done  = sum(1 for idx in range(len(exs)) if st.session_state[chosen_key].get(dia + "_" + str(idx), False))
             total = len(exs)
             pct   = int(done / total * 100) if total > 0 else 0
             bc    = "#059669" if pct == 100 else cor if pct > 0 else "#CBD5E1"
@@ -1310,10 +1366,9 @@ with tab3:
 
             for idx, (nome, series, desc) in enumerate(exs):
                 ck      = dia + "_" + str(idx)
-                done_ex = st.session_state[week_key].get(ck, False)
+                done_ex = st.session_state[chosen_key].get(ck, False)
 
                 col_info, col_btn = st.columns([5, 1])
-
                 with col_info:
                     opacity     = "0.35" if done_ex else "1"
                     name_style  = "text-decoration:line-through;color:#94A3B8;" if done_ex else "font-weight:600;color:#0F172A;"
@@ -1330,8 +1385,8 @@ with tab3:
 
                 with col_btn:
                     btn_label = "✓" if done_ex else "○"
-                    if st.button(btn_label, key="ck_" + ck + "_" + week_key):
-                        st.session_state[week_key][ck] = not done_ex
+                    if st.button(btn_label, key="ck_" + ck + "_" + chosen_key):
+                        st.session_state[chosen_key][ck] = not done_ex
                         st.rerun()
 
             if dados["nota"]:
@@ -1340,10 +1395,9 @@ with tab3:
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        if st.button("↺ Reiniciar Semana", key="reset_week"):
-            st.session_state[week_key] = {}
+        if st.button("↺ Reiniciar Semana " + str(chosen_wn), key="reset_week"):
+            st.session_state[chosen_key] = {}
             st.rerun()
-
 
 # ▌TAB 4 — ANÁLISE DE AÇÕES
 # ══════════════════════════════════════════════════════════════════════
