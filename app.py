@@ -813,171 +813,143 @@ if not st.session_state.auth:
 
     pin_html = f"""
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }}
-  html, body {{
-    height: 100%; width: 100%;
-    background: #F0F2F5;
-    font-family: -apple-system, 'SF Pro Display', 'Inter', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    user-select: none;
-  }}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login PIN</title>
+  <style>
+    /* Estilo básico dos pontos */
+    #dots {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 20px;
+      height: 20px;
+      margin: 0 5px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      background-color: transparent;
+      transition: background 0.2s;
+    }
+    .dot.filled {
+      background-color: #333;
+    }
+    .dot.error {
+      border-color: red;
+      background-color: pink;
+    }
+    .shake {
+      animation: shake 0.3s;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
 
-  .logo {{
-    font-size: 26px; font-weight: 800;
-    color: #0F172A; letter-spacing: -0.8px;
-    margin-bottom: 6px;
-  }}
-  .logo em {{ color: #2563EB; font-style: normal; }}
-
-  .subtitle {{
-    font-size: 14px; color: #94A3B8;
-    margin-bottom: 40px;
-  }}
-
-  /* ── dots ── */
-  .dots {{
-    display: flex; gap: 16px;
-    margin-bottom: 48px;
-    justify-content: center;
-  }}
-  .dot {{
-    width: 14px; height: 14px; border-radius: 50%;
-    border: 2px solid #CBD5E1;
-    background: transparent;
-    transition: all 0.12s ease;
-  }}
-  .dot.filled {{ background: #0F172A; border-color: #0F172A; transform: scale(1.12); }}
-  .dot.error  {{ background: #EF4444; border-color: #EF4444; }}
-
-  @keyframes shake {{
-    0%,100% {{ transform: translateX(0); }}
-    20%      {{ transform: translateX(-8px); }}
-    40%      {{ transform: translateX(8px); }}
-    60%      {{ transform: translateX(-5px); }}
-    80%      {{ transform: translateX(5px); }}
-  }}
-  .dots.shake {{ animation: shake 0.4s ease; }}
-
-  /* ── error msg ── */
-  .error-msg {{
-    height: 18px; margin-bottom: 16px;
-    font-size: 13px; font-weight: 600;
-    color: #EF4444; text-align: center;
-  }}
-
-  /* ── keypad ── */
-  .keypad {{
-    display: grid;
-    grid-template-columns: repeat(3, 80px);
-    grid-template-rows: repeat(4, 80px);
-    gap: 12px;
-  }}
-  .key {{
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    background: #FFFFFF;
-    border: none;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-    transition: background 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease;
-    -webkit-touch-callout: none;
-  }}
-  .key:active {{
-    background: #E2E8F0;
-    transform: scale(0.91);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }}
-  .key .num {{
-    font-size: 26px; font-weight: 300;
-    color: #0F172A; line-height: 1;
-  }}
-  .key .letters {{
-    font-size: 8px; font-weight: 600;
-    color: #94A3B8; letter-spacing: 1.5px;
-    margin-top: 3px;
-  }}
-  .key.empty {{
-    background: transparent;
-    box-shadow: none;
-    cursor: default;
-    pointer-events: none;
-  }}
-  .key.del {{
-    background: transparent;
-    box-shadow: none;
-    font-size: 22px; color: #374151;
-  }}
-  .key.del:active {{ background: #E2E8F0; }}
-</style>
+    /* Teclado numérico */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 60px);
+      gap: 10px;
+      justify-content: center;
+    }
+    .keypad button {
+      padding: 15px;
+      font-size: 18px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #f0f0f0;
+    }
+    .keypad button:active {
+      background-color: #ccc;
+    }
+  </style>
 </head>
 <body>
 
-<div class="logo">F<em>|</em>QUANT</div>
-<div class="subtitle">Introduce o teu PIN para continuar</div>
+  <!-- Pontos do PIN -->
+  <div class="dots" id="dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
 
-<div class="dots {'shake' if err else ''}" id="dots">
-  <div class="dot {'error' if err else ''}"></div>
-  <div class="dot {'error' if err else ''}"></div>
-  <div class="dot {'error' if err else ''}"></div>
-  <div class="dot {'error' if err else ''}"></div>
-</div>
+  <!-- Mensagem de erro (podes preencher via backend se o PIN estiver errado) -->
+  <div class="error-msg" style="text-align:center;color:red;"></div>
 
-<div class="error-msg">{'PIN incorreto. Tenta novamente.' if err else ''}</div>
+  <!-- Teclado numérico -->
+  <div class="keypad">
+    <button onclick="press('1')">1</button>
+    <button onclick="press('2')">2</button>
+    <button onclick="press('3')">3</button>
+    <button onclick="press('4')">4</button>
+    <button onclick="press('5')">5</button>
+    <button onclick="press('6')">6</button>
+    <button onclick="press('7')">7</button>
+    <button onclick="press('8')">8</button>
+    <button onclick="press('9')">9</button>
+    <button onclick="del()">Del</button>
+    <button onclick="press('0')">0</button>
+  </div>
 
-<div class="keypad">
-  <div class="key" onclick="press('1')"><span class="num">1</span><span class="letters">&nbsp;</span></div>
-  <div class="key" onclick="press('2')"><span class="num">2</span><span class="letters">ABC</span></div>
-  <div class="key" onclick="press('3')"><span class="num">3</span><span class="letters">DEF</span></div>
-  <div class="key" onclick="press('4')"><span class="num">4</span><span class="letters">GHI</span></div>
-  <div class="key" onclick="press('5')"><span class="num">5</span><span class="letters">JKL</span></div>
-  <div class="key" onclick="press('6')"><span class="num">6</span><span class="letters">MNO</span></div>
-  <div class="key" onclick="press('7')"><span class="num">7</span><span class="letters">PQRS</span></div>
-  <div class="key" onclick="press('8')"><span class="num">8</span><span class="letters">TUV</span></div>
-  <div class="key" onclick="press('9')"><span class="num">9</span><span class="letters">WXYZ</span></div>
-  <div class="key empty"></div>
-  <div class="key" onclick="press('0')"><span class="num">0</span><span class="letters">&nbsp;</span></div>
-  <div class="key del" onclick="del()">⌫</div>
-</div>
+  <!-- Script para login automático e atualização dos pontos -->
+  <script>
+    let buf = "";
 
-<script>
-  var buf = "";
+    function updateDots() {
+      const dots = document.querySelectorAll(".dot");
+      dots.forEach((d,i)=>{
+        d.classList.toggle("filled", i < buf.length);
+      });
+    }
 
-  function updateDots() {{
-    var dots = document.querySelectorAll(".dot");
-    dots.forEach(function(d, i) {{
-      d.classList.toggle("filled", i < buf.length);
-      d.classList.remove("error");
-    }});
-  }}
+    function press(n) {
+      if (buf.length >= 4) return;
 
-  function press(v) {{
-    if (buf.length >= 4) return;
-    if (navigator.vibrate) navigator.vibrate(8);
-    buf += v;
-    updateDots();
-    if (buf.length === 4) {{
-      // submit via URL query param — Streamlit reads it on next rerun
-      setTimeout(function() {{
-        var url = new URL(window.parent.location.href);
-        url.searchParams.set("pin", buf);
-        window.parent.location.href = url.toString();
-      }}, 120);
-    }}
-  }}
+      buf += n;
+      updateDots();
 
-  function del() {{
-    buf = buf.slice(0, -1);
-    updateDots();
-  }}
-</script>
+      if (buf.length === 4) {
+        setTimeout(function () {
+          const url = new URL(window.parent.location.href);
+          url.searchParams.set("pin", buf);
+          window.parent.location.href = url.toString();
+        }, 80);
+      }
+    }
+
+    function del() {
+      buf = buf.slice(0, -1);
+      updateDots();
+    }
+
+    /* limpa automaticamente se houve erro */
+    window.addEventListener("load", function() {
+      const error = document.querySelector(".error-msg");
+      if (error && error.textContent.trim() !== "") {
+        buf = "";
+        updateDots();
+      }
+    });
+
+    /* permite digitar pelo teclado físico */
+    window.addEventListener("keydown", function(e) {
+      if (e.key >= '0' && e.key <= '9') {
+        press(e.key);
+      } else if (e.key === 'Backspace') {
+        del();
+      }
+    });
+  </script>
+
 </body>
 </html>
 """
@@ -1625,3 +1597,4 @@ st.markdown("""
         F|QUANT &nbsp;·&nbsp; Personal Edition
     </div>
 """, unsafe_allow_html=True)
+
