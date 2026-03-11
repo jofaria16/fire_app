@@ -794,68 +794,111 @@ TREINO = {
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
+# Separate buffer key — never tied to a widget, safe to write any time
+if "pin_buf" not in st.session_state:
+    st.session_state.pin_buf = ""
+
 if not st.session_state.auth:
+    buf = st.session_state.pin_buf
     err = st.session_state.pin_error
+    n   = len(buf)
+
+    # ── dots ──────────────────────────────────────────────────────────
+    dots = "".join([
+        f"""<div style="
+            width:13px;height:13px;border-radius:50%;
+            background:{'#EF4444' if err else '#0F172A' if i < n else 'transparent'};
+            border:2px solid {'#EF4444' if err else '#0F172A' if i < n else '#CBD5E1'};
+            transition:all 0.12s ease;
+        "></div>"""
+        for i in range(4)
+    ])
 
     st.markdown(f"""
     <style>
-      .stApp, [data-testid="stAppViewContainer"] {{ background:#FFFFFF !important; }}
+      .stApp {{ background:#FFFFFF !important; }}
       header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"],
       [data-testid="stStatusWidget"], #MainMenu {{ display:none !important; }}
-      .block-container {{ padding:0 !important; }}
+      .block-container {{ padding:0 !important; max-width:100% !important; }}
 
-      [data-testid="stVerticalBlock"] {{
-        display:flex !important; flex-direction:column !important;
-        align-items:center !important; justify-content:center !important;
-        min-height:100vh !important; gap:0 !important;
+      /* PIN header — centered above the buttons */
+      .pin-header {{
+        text-align:center;
+        padding: 72px 0 48px;
       }}
+      .pin-logo  {{ font-size:26px; font-weight:800; color:#0F172A; letter-spacing:-0.8px; margin-bottom:6px; }}
+      .pin-logo span {{ color:#2563EB; }}
+      .pin-sub   {{ font-size:14px; color:#94A3B8; margin-bottom:44px; }}
+      .pin-dots  {{ display:flex; gap:18px; justify-content:center; }}
+      .pin-err   {{ min-height:20px; font-size:13px; font-weight:600; color:#EF4444; text-align:center; margin-top:14px; }}
 
-      div[data-testid="stTextInput"] {{ width:200px !important; }}
-      div[data-testid="stTextInput"] input {{
-        font-size:36px !important; font-weight:700 !important;
-        letter-spacing:18px !important; text-align:center !important;
-        border:none !important; border-bottom:2px solid #CBD5E1 !important;
-        border-radius:0 !important; background:transparent !important;
-        box-shadow:none !important; padding:8px 0 !important;
+      /* Keypad button overrides — circular, centered */
+      div[data-testid="stButton"] > button {{
+        width:76px !important; height:76px !important;
+        border-radius:50% !important;
+        background:#F1F5F9 !important;
         color:#0F172A !important;
+        font-size:24px !important; font-weight:300 !important;
+        border:none !important;
+        box-shadow:0 2px 8px rgba(0,0,0,0.08) !important;
+        padding:0 !important;
+        display:flex !important; align-items:center !important; justify-content:center !important;
+        margin:0 auto !important;
+        transition:transform 0.08s ease, background 0.08s ease !important;
       }}
-      div[data-testid="stTextInput"] input:focus {{
-        border-bottom-color:#2563EB !important; box-shadow:none !important;
+      div[data-testid="stButton"] > button:hover {{
+        background:#E2E8F0 !important; opacity:1 !important;
+        transform:scale(0.95) !important;
+        box-shadow:0 1px 4px rgba(0,0,0,0.07) !important;
       }}
-      div[data-testid="stTextInput"] label {{ display:none !important; }}
+      div[data-testid="stButton"] > button:active {{
+        background:#CBD5E1 !important; transform:scale(0.90) !important;
+      }}
+
+      /* Force columns to stay horizontal and centered even on mobile */
+      [data-testid="stHorizontalBlock"] {{
+        display:flex !important; flex-direction:row !important;
+        justify-content:center !important; gap:14px !important;
+        flex-wrap:nowrap !important;
+      }}
+      [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
+        flex:0 0 76px !important; min-width:76px !important; max-width:76px !important;
+        width:76px !important; padding:0 !important;
+      }}
     </style>
 
-    <div style="text-align:center; padding-bottom:4px;">
-      <div style="font-size:26px;font-weight:800;color:#0F172A;letter-spacing:-0.8px;margin-bottom:6px;">
-        F<span style="color:#2563EB;">|</span>QUANT
-      </div>
-      <div style="font-size:14px;color:#94A3B8;margin-bottom:40px;">
-        Introduce o teu PIN para continuar
-      </div>
+    <div class="pin-header">
+      <div class="pin-logo">F<span>|</span>QUANT</div>
+      <div class="pin-sub">Introduce o teu PIN para continuar</div>
+      <div class="pin-dots">{dots}</div>
+      <div class="pin-err">{'PIN incorreto. Tenta novamente.' if err else ''}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    pin_typed = st.text_input(
-        "PIN", value="", max_chars=4, type="password",
-        key="pin_input", label_visibility="collapsed",
-    )
-
-    if err:
-        st.markdown("""
-            <div style="font-size:13px;font-weight:600;color:#EF4444;
-                        text-align:center;margin-top:12px;">
-              PIN incorreto. Tenta novamente.
-            </div>
-        """, unsafe_allow_html=True)
-
-    if len(pin_typed) == 4:
-        if pin_typed == CORRECT_PIN:
-            st.session_state.auth      = True
-            st.session_state.pin_error = False
-        else:
-            st.session_state.pin_error = True
-        st.session_state.pin_input = ""
-        st.rerun()
+    # ── keypad rows — pure st.button, buffer in pin_buf ───────────────
+    rows = [["1","2","3"], ["4","5","6"], ["7","8","9"], ["_","0","⌫"]]
+    for row in rows:
+        c1, c2, c3 = st.columns(3)
+        for col, val in zip([c1, c2, c3], row):
+            with col:
+                if val == "_":
+                    st.markdown("<div style='height:76px'></div>", unsafe_allow_html=True)
+                elif st.button(val, key=f"pb_{val}"):
+                    if val == "⌫":
+                        st.session_state.pin_buf   = buf[:-1]
+                        st.session_state.pin_error = False
+                    else:
+                        new = buf + val
+                        st.session_state.pin_buf   = new
+                        st.session_state.pin_error = False
+                        if len(new) == 4:
+                            if new == CORRECT_PIN:
+                                st.session_state.auth    = True
+                                st.session_state.pin_buf = ""
+                            else:
+                                st.session_state.pin_error = True
+                                st.session_state.pin_buf   = ""
+                    st.rerun()
 
     st.stop()
 
