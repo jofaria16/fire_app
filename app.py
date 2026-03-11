@@ -948,39 +948,43 @@ if not st.session_state.auth:
 </div>
 
 <script>
-  var buf = "";
+let buf = "";
 
-  function updateDots() {{
-    var dots = document.querySelectorAll(".dot");
-    dots.forEach(function(d, i) {{
-      d.classList.toggle("filled", i < buf.length);
-      d.classList.remove("error");
-    }});
-  }}
+function updateDots() {
+  const dots = document.querySelectorAll(".dot");
+  dots.forEach((d,i)=>{
+    d.classList.toggle("filled", i < buf.length);
+  });
+}
 
-  function press(v) {{
-    if (buf.length >= 4) return;
-    if (navigator.vibrate) navigator.vibrate(8);
-    buf += v;
+function press(n) {
+  if (buf.length >= 4) return;
+
+  buf += n;
+  updateDots();
+
+  if (buf.length === 4) {
+    setTimeout(function () {
+      const url = new URL(window.parent.location.href);
+      url.searchParams.set("pin", buf);
+      window.parent.location.href = url.toString();
+    }, 80);
+  }
+}
+
+function del() {
+  buf = buf.slice(0, -1);
+  updateDots();
+}
+
+/* limpa automaticamente se houve erro */
+window.addEventListener("load", function() {
+  const error = document.querySelector(".error-msg");
+  if (error && error.textContent.trim() !== "") {
+    buf = "";
     updateDots();
-    if (buf.length === 4) {{
-      // submit via URL query param — Streamlit reads it on next rerun
-      setTimeout(function() {{
-        var url = new URL(window.parent.location.href);
-        url.searchParams.set("pin", buf);
-        window.parent.location.href = url.toString();
-      }}, 120);
-    }}
-  }}
-
-  function del() {{
-    buf = buf.slice(0, -1);
-    updateDots();
-  }}
-</script>
-</body>
-</html>
-"""
+  }
+});
 
     st.components.v1.html(pin_html, height=620, scrolling=False)
     st.stop()
@@ -1625,3 +1629,4 @@ st.markdown("""
         F|QUANT &nbsp;·&nbsp; Personal Edition
     </div>
 """, unsafe_allow_html=True)
+
