@@ -955,7 +955,7 @@ with tab1:
         platforms = [("T212","Trading 212","#2563EB"), ("IBKR","IBKR","#059669"),
                      ("CRY","Crypto","#D97706"),       ("PPR","PPR","#7C3AED")]
 
-        st.markdown('<div class="platform-grid">', unsafe_allow_html=True)
+        _pcards = []
         for cn, label, color in platforms:
             if cn not in df_p.columns: continue
             cur = float(latest.get(cn, 0) or 0)
@@ -965,15 +965,15 @@ with tab1:
             s   = "+" if d >= 0 else ""
             dc  = "#059669" if d >= 0 else "#DC2626"
             bw  = int(cur / tot * 100) if tot > 0 else 0
-            st.markdown(f"""
+            _pcards.append(f"""
                 <div class="platform-card">
                     <div class="pc-label">{label}</div>
                     <div class="pc-value" style="color:{color};">{cur:,.0f}€</div>
                     <div class="pc-delta" style="color:{dc};">{s}{d:,.0f}€ &nbsp;·&nbsp; {s}{dp:.1f}%</div>
                     <div class="pc-bar"><div class="pc-fill" style="width:{bw}%;background:{color};"></div></div>
                 </div>
-            """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            """)
+        st.markdown('<div class="platform-grid">' + "".join(_pcards) + '</div>', unsafe_allow_html=True)
 
     else:
         st.markdown("""
@@ -1018,18 +1018,14 @@ with tab1:
                 e4 = ec2.number_input("PPR",         value=float(r.get("PPR",0)  or 0), format="%.2f", key=f"ep4_{i}")
                 sb1, sb2 = st.columns(2)
                 with sb1:
-                    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
-                    if st.button("Guardar", key=f"eps_{i}"):
+                    if st.button("✓ Guardar", key=f"eps_{i}", type="primary"):
                         df_p.at[i,"T212"]=e1; df_p.at[i,"IBKR"]=e2
                         df_p.at[i,"CRY"]=e3;  df_p.at[i,"PPR"]=e4
                         df_p.at[i,"Total"]=e1+e2+e3+e4
                         save_db(df_p, "patrimonio"); st.session_state.edit_pat = None; st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
                 with sb2:
-                    st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
                     if st.button("Cancelar", key=f"epc_{i}"):
                         st.session_state.edit_pat = None; st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
             else:
                 sub = f'T212 {float(r.get("T212",0) or 0):,.0f} · IBKR {float(r.get("IBKR",0) or 0):,.0f} · Crypto {float(r.get("CRY",0) or 0):,.0f} · PPR {float(r.get("PPR",0) or 0):,.0f}'
                 cc, ce, cd = st.columns([10, 1, 1])
@@ -1094,13 +1090,13 @@ with tab2:
             total_s = cat_t.sum()
             if total_s > 0:
                 st.markdown('<div class="section-label" style="margin-top:20px;">Distribuição de Despesas</div>', unsafe_allow_html=True)
-                st.markdown('<div class="card"><div class="card-body">', unsafe_allow_html=True)
+                _catrows = []
                 for cat, val in cat_t.items():
                     color = CAT_COLORS.get(cat, "#6B7280")
                     icon  = CAT_ICONS.get(cat, "•")
                     pct   = val / total_s * 100
                     bw_c  = int(pct)
-                    st.markdown(f"""
+                    _catrows.append(f"""
                         <div class="cat-row">
                             <div class="cat-dot" style="background:{color};"></div>
                             <div class="cat-name">{icon} {cat}</div>
@@ -1112,8 +1108,8 @@ with tab2:
                                 <div class="cat-pct">{pct:.0f}%</div>
                             </div>
                         </div>
-                    """, unsafe_allow_html=True)
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                    """)
+                st.markdown('<div class="card"><div class="card-body">' + "".join(_catrows) + '</div></div>', unsafe_allow_html=True)
 
     else:
         st.markdown("""
@@ -1174,16 +1170,12 @@ with tab2:
                 ns = fe2.number_input("Saídas",   value=float(r["Saidas"]),   format="%.2f", key=f"fes_{i}")
                 fb1, fb2 = st.columns(2)
                 with fb1:
-                    st.markdown('<div class="btn-green">', unsafe_allow_html=True)
-                    if st.button("Guardar", key=f"fsv_{i}"):
+                    if st.button("✓ Guardar", key=f"fsv_{i}", type="primary"):
                         df_f.at[i,"Entradas"] = ne; df_f.at[i,"Saidas"] = ns
                         save_db(df_f, "poupanca"); st.session_state.edit_flx = None; st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
                 with fb2:
-                    st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
                     if st.button("Cancelar", key=f"fca_{i}"):
                         st.session_state.edit_flx = None; st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
             else:
                 cc, ce, cd = st.columns([10, 1, 1])
                 with cc:
@@ -1270,17 +1262,13 @@ with tab3:
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         sc1, sc2 = st.columns(2)
         with sc1:
-            st.markdown('<div class="btn-green">', unsafe_allow_html=True)
-            if st.button("Guardar Plano", key="save_treino"):
+            if st.button("✓ Guardar Plano", key="save_treino", type="primary"):
                 rows = [{"dia":dia,"nome":n,"series":s,"desc":d} for dia,exs in edited.items() for n,s,d in exs]
                 pd.DataFrame(rows).to_csv(treino_path, index=False)
                 st.session_state.treino_edit = False; st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
         with sc2:
-            st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
             if st.button("Cancelar", key="cancel_treino"):
                 st.session_state.treino_edit = False; st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     else:
         # DISPLAY MODE
@@ -1320,8 +1308,8 @@ with tab3:
                     st.session_state[week_key][ck] = vc; st.rerun()
 
                 circle_html = f'<div class="cr-circle {"done" if done_ex else ""}">{"<span class=cr-check>✓</span>" if done_ex else ""}</div>'
-                op = "0.35" if done_ex else "1"
-                series_bg = f"background:{cor}12;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
+                series_bg   = f"background:{cor}12;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
+                desc_html   = f'<div class="cr-desc">{desc}</div>' if desc else ""
 
                 st.markdown(f"""
                     <div class="check-row {"done" if done_ex else ""}" style="padding-left:18px;padding-right:18px;">
@@ -1329,7 +1317,7 @@ with tab3:
                         <div style="flex:1;min-width:0;">
                             <div class="cr-name {"done" if done_ex else ""}">{nome}</div>
                             <span class="cr-series" style="{series_bg}">{series}</span>
-                            {'<div class="cr-desc">'+desc+'</div>' if desc else ''}
+                            {desc_html}
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -1340,10 +1328,8 @@ with tab3:
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        st.markdown('<div class="btn-ghost">', unsafe_allow_html=True)
         if st.button("↺ Reiniciar Semana", key="reset_week"):
             st.session_state[week_key] = {}; st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════
