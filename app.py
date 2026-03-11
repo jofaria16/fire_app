@@ -794,127 +794,162 @@ TREINO = {
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
+# Read PIN submitted by JS via query param
 if not st.session_state.auth:
-    pin = st.session_state.pin_input
-    err = st.session_state.pin_error
-    n   = len(pin)
+    qp = st.query_params
+    if "pin" in qp:
+        submitted = qp.get("pin", "")
+        st.query_params.clear()
+        if submitted == CORRECT_PIN:
+            st.session_state.auth      = True
+            st.session_state.pin_error = False
+        else:
+            st.session_state.pin_error = True
+        st.rerun()
 
-    # Dots display
-    dot_html = "".join([
-        f'<div class="pin-dot {"filled" if i < n else ""} {"error" if err else ""}"></div>'
-        for i in range(4)
-    ])
-    err_html = '<div class="pin-err">PIN incorreto. Tenta novamente.</div>' if err else '<div class="pin-err"></div>'
+if not st.session_state.auth:
+    err = st.session_state.pin_error
+
+    dot_states = ["filled" if i < 0 else "" for i in range(4)]  # start empty
+    dots_html  = "".join([f'<div class="dot" id="d{i}"></div>' for i in range(4)])
+    err_txt    = "PIN incorreto. Tenta novamente." if err else ""
+    shake_cls  = "shake" if err else ""
 
     st.markdown(f"""
     <style>
-      /* White background for PIN screen */
-      .stApp {{ background: #FFFFFF !important; }}
-
-      /* Center everything */
-      .pin-wrap {{
-        display: flex; flex-direction: column;
-        align-items: center; padding-top: 80px;
+      .stApp, [data-testid="stAppViewContainer"] {{
+        background: #FFFFFF !important;
       }}
-      .pin-logo {{
-        font-size: 26px; font-weight: 800; color: #0F172A;
-        letter-spacing: -0.8px; margin-bottom: 6px;
-      }}
-      .pin-logo em {{ color: #2563EB; font-style: normal; }}
-      .pin-sub {{
-        font-size: 14px; color: #94A3B8;
-        margin-bottom: 48px;
-      }}
-      .pin-dots {{
-        display: flex; gap: 18px; margin-bottom: 14px;
-      }}
-      .pin-dot {{
-        width: 14px; height: 14px; border-radius: 50%;
-        border: 2px solid #CBD5E1; background: transparent;
-        transition: all 0.12s ease;
-      }}
-      .pin-dot.filled {{ background: #0F172A; border-color: #0F172A; transform: scale(1.12); }}
-      .pin-dot.error  {{ background: #EF4444; border-color: #EF4444; }}
-      .pin-err {{
-        height: 18px; font-size: 13px; font-weight: 600;
-        color: #EF4444; margin-bottom: 36px; text-align: center;
-      }}
-
-      /* Make all buttons in PIN screen circular */
-      div[data-testid="stButton"] button {{
-        width: 76px !important;
-        height: 76px !important;
-        border-radius: 50% !important;
-        background: #F1F5F9 !important;
-        color: #0F172A !important;
-        font-size: 24px !important;
-        font-weight: 300 !important;
-        border: none !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-        padding: 0 !important;
-        margin: 0 auto !important;
-        display: block !important;
-        transition: transform 0.08s ease, background 0.08s ease !important;
-      }}
-      div[data-testid="stButton"] button:hover {{
-        background: #E2E8F0 !important;
-        transform: scale(0.94) !important;
-        opacity: 1 !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.07) !important;
-      }}
-      div[data-testid="stButton"] button:active {{
-        transform: scale(0.88) !important;
-        background: #CBD5E1 !important;
-      }}
-
-      /* Tighten column gaps for keypad */
-      div[data-testid="stHorizontalBlock"] {{
-        gap: 12px !important;
-        justify-content: center !important;
-        max-width: 280px !important;
-        margin: 0 auto !important;
-      }}
+      /* Hide all Streamlit chrome on PIN screen */
+      header, footer, [data-testid="stToolbar"],
+      [data-testid="stDecoration"], [data-testid="stStatusWidget"],
+      #MainMenu {{ display: none !important; }}
+      .block-container {{ padding: 0 !important; }}
     </style>
 
-    <div class="pin-wrap">
-      <div class="pin-logo">F<em>|</em>QUANT</div>
-      <div class="pin-sub">Introduce o teu PIN para continuar</div>
-      <div class="pin-dots">{dot_html}</div>
-      {err_html}
+    <div style="
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh;
+      background: #FFFFFF; font-family: -apple-system, 'Inter', sans-serif;
+      padding: 0 24px;
+    ">
+      <!-- Logo -->
+      <div style="font-size:26px; font-weight:800; color:#0F172A;
+                  letter-spacing:-0.8px; margin-bottom:6px;">
+        F<span style="color:#2563EB;">|</span>QUANT
+      </div>
+      <div style="font-size:14px; color:#94A3B8; margin-bottom:48px;">
+        Introduce o teu PIN para continuar
+      </div>
+
+      <!-- Dots -->
+      <div id="dots" style="display:flex; gap:18px; margin-bottom:16px;" class="{shake_cls}">
+        <div class="dot" id="d0"></div>
+        <div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div>
+        <div class="dot" id="d3"></div>
+      </div>
+
+      <!-- Error message -->
+      <div id="errmsg" style="
+        height:20px; font-size:13px; font-weight:600;
+        color:#EF4444; margin-bottom:40px; text-align:center;
+      ">{err_txt}</div>
+
+      <!-- Keypad grid -->
+      <div style="
+        display: grid;
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(4, 80px);
+        gap: 12px;
+      ">
+        <div class="k" onclick="p('1')"><span class="n">1</span></div>
+        <div class="k" onclick="p('2')"><span class="n">2</span><span class="l">ABC</span></div>
+        <div class="k" onclick="p('3')"><span class="n">3</span><span class="l">DEF</span></div>
+        <div class="k" onclick="p('4')"><span class="n">4</span><span class="l">GHI</span></div>
+        <div class="k" onclick="p('5')"><span class="n">5</span><span class="l">JKL</span></div>
+        <div class="k" onclick="p('6')"><span class="n">6</span><span class="l">MNO</span></div>
+        <div class="k" onclick="p('7')"><span class="n">7</span><span class="l">PQRS</span></div>
+        <div class="k" onclick="p('8')"><span class="n">8</span><span class="l">TUV</span></div>
+        <div class="k" onclick="p('9')"><span class="n">9</span><span class="l">WXYZ</span></div>
+        <div style="width:80px;height:80px;"></div>
+        <div class="k" onclick="p('0')"><span class="n">0</span></div>
+        <div class="k kdel" onclick="del()">⌫</div>
+      </div>
     </div>
+
+    <style>
+      .dot {{
+        width:14px; height:14px; border-radius:50%;
+        border:2px solid #CBD5E1; background:transparent;
+        transition: all 0.12s ease;
+      }}
+      .dot.filled {{ background:#0F172A; border-color:#0F172A; transform:scale(1.12); }}
+      .dot.error  {{ background:#EF4444; border-color:#EF4444; }}
+
+      @keyframes shake {{
+        0%,100% {{ transform:translateX(0); }}
+        20%  {{ transform:translateX(-9px); }}
+        40%  {{ transform:translateX(9px); }}
+        60%  {{ transform:translateX(-5px); }}
+        80%  {{ transform:translateX(5px); }}
+      }}
+      .shake {{ animation: shake 0.38s ease; }}
+
+      .k {{
+        width:80px; height:80px; border-radius:50%;
+        background:#F1F5F9;
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        cursor:pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.08s ease, background 0.08s ease;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }}
+      .k:active {{ background:#D1D5DB; transform:scale(0.91); }}
+      .n {{ font-size:26px; font-weight:300; color:#0F172A; line-height:1; }}
+      .l {{ font-size:8px; font-weight:600; color:#94A3B8; letter-spacing:1.5px; margin-top:3px; }}
+      .kdel {{ background:transparent; box-shadow:none; font-size:20px; color:#374151; }}
+      .kdel:active {{ background:#E2E8F0; }}
+    </style>
+
+    <script>
+      var buf = "";
+
+      function updateDots() {{
+        for (var i = 0; i < 4; i++) {{
+          var d = document.getElementById("d" + i);
+          d.className = "dot" + (i < buf.length ? " filled" : "");
+        }}
+        document.getElementById("errmsg").textContent = "";
+        document.getElementById("dots").classList.remove("shake");
+      }}
+
+      function p(v) {{
+        if (buf.length >= 4) return;
+        if (navigator.vibrate) navigator.vibrate(8);
+        buf += v;
+        updateDots();
+        if (buf.length === 4) {{
+          // Submit PIN by navigating the parent page URL with ?pin=
+          setTimeout(function() {{
+            var url = new URL(window.location.href);
+            url.searchParams.set("pin", buf);
+            window.location.href = url.toString();
+          }}, 120);
+        }}
+      }}
+
+      function del() {{
+        buf = buf.slice(0, -1);
+        updateDots();
+      }}
+    </script>
     """, unsafe_allow_html=True)
 
-    # Keypad — pure st.button, no JS needed
-    keymap = [
-        [("1","1"), ("2","2"), ("3","3")],
-        [("4","4"), ("5","5"), ("6","6")],
-        [("7","7"), ("8","8"), ("9","9")],
-        [("",  "_"), ("0","0"), ("⌫","del")],
-    ]
-    for row in keymap:
-        c1, c2, c3 = st.columns(3)
-        for col, (label, val) in zip([c1, c2, c3], row):
-            with col:
-                if val == "_":
-                    st.markdown("<div style='height:76px'></div>", unsafe_allow_html=True)
-                elif st.button(label, key=f"pin_{val}"):
-                    if val == "del":
-                        st.session_state.pin_input = pin[:-1]
-                        st.session_state.pin_error = False
-                    else:
-                        new_pin = pin + val
-                        st.session_state.pin_input = new_pin
-                        st.session_state.pin_error = False
-                        if len(new_pin) == 4:
-                            if new_pin == CORRECT_PIN:
-                                st.session_state.auth      = True
-                                st.session_state.pin_input = ""
-                            else:
-                                st.session_state.pin_error = True
-                                st.session_state.pin_input = ""
-                    st.rerun()
-
     st.stop()
+
 
 
 # ══════════════════════════════════════════════════════════════════════
