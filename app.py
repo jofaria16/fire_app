@@ -790,191 +790,129 @@ TREINO = {
 }
 
 # ══════════════════════════════════════════════════════════════════════
-# PIN AUTH — iPhone-style keypad
+# PIN AUTH
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
 if not st.session_state.auth:
+    pin = st.session_state.pin_input
     err = st.session_state.pin_error
+    n   = len(pin)
 
-    # ── Hidden text input — JS writes the 4-digit PIN here, then submits ──
-    # We give it a unique label so JS can find the underlying <input>
-    pin_val = st.text_input(
-        "pin_bridge",
-        value="",
-        key="pin_input",
-        label_visibility="collapsed",
-        max_chars=4,
-    )
-
-    # If 4 chars arrived, validate immediately
-    if len(pin_val) == 4:
-        if pin_val == CORRECT_PIN:
-            st.session_state.auth = True
-            st.session_state.pin_error = False
-        else:
-            st.session_state.pin_error = True
-        # Clear the input for next attempt
-        st.session_state.pin_input = ""
-        st.rerun()
-
-    # ── Full-screen PIN UI injected via markdown ──
-    n = len(pin_val)
+    # Dots display
     dot_html = "".join([
-        f'<div class="pdot {"pfilled" if i < n else ""} {"perror" if err else ""}"></div>'
+        f'<div class="pin-dot {"filled" if i < n else ""} {"error" if err else ""}"></div>'
         for i in range(4)
     ])
+    err_html = '<div class="pin-err">PIN incorreto. Tenta novamente.</div>' if err else '<div class="pin-err"></div>'
 
     st.markdown(f"""
     <style>
-      /* Hide the actual text input completely */
-      div[data-testid="stTextInput"] {{
-        position: absolute !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        height: 0 !important;
-        overflow: hidden !important;
-      }}
+      /* White background for PIN screen */
+      .stApp {{ background: #FFFFFF !important; }}
 
-      /* Full-screen PIN overlay */
-      .pin-overlay {{
-        position: fixed; inset: 0; z-index: 9999;
-        background: #F0F2F5;
+      /* Center everything */
+      .pin-wrap {{
         display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        font-family: -apple-system, 'Inter', sans-serif;
+        align-items: center; padding-top: 80px;
       }}
-      .pin-brand {{
+      .pin-logo {{
         font-size: 26px; font-weight: 800; color: #0F172A;
         letter-spacing: -0.8px; margin-bottom: 6px;
       }}
-      .pin-brand em {{ color: #2563EB; font-style: normal; }}
-      .pin-sub {{ font-size: 14px; color: #94A3B8; margin-bottom: 44px; }}
-
-      .pdots {{
-        display: flex; gap: 18px; margin-bottom: 12px;
-        animation: {'pshake' if err else 'none'} 0.4s ease;
+      .pin-logo em {{ color: #2563EB; font-style: normal; }}
+      .pin-sub {{
+        font-size: 14px; color: #94A3B8;
+        margin-bottom: 48px;
       }}
-      .pdot {{
+      .pin-dots {{
+        display: flex; gap: 18px; margin-bottom: 14px;
+      }}
+      .pin-dot {{
         width: 14px; height: 14px; border-radius: 50%;
         border: 2px solid #CBD5E1; background: transparent;
         transition: all 0.12s ease;
       }}
-      .pdot.pfilled {{ background: #0F172A; border-color: #0F172A; transform: scale(1.12); }}
-      .pdot.perror  {{ background: #EF4444; border-color: #EF4444; }}
-      @keyframes pshake {{
-        0%,100% {{ transform: translateX(0); }}
-        20% {{ transform: translateX(-8px); }}
-        40% {{ transform: translateX(8px); }}
-        60% {{ transform: translateX(-5px); }}
-        80% {{ transform: translateX(5px); }}
+      .pin-dot.filled {{ background: #0F172A; border-color: #0F172A; transform: scale(1.12); }}
+      .pin-dot.error  {{ background: #EF4444; border-color: #EF4444; }}
+      .pin-err {{
+        height: 18px; font-size: 13px; font-weight: 600;
+        color: #EF4444; margin-bottom: 36px; text-align: center;
       }}
 
-      .pin-errmsg {{
-        height: 20px; margin-bottom: 32px;
-        font-size: 13px; font-weight: 600; color: #EF4444; text-align: center;
+      /* Make all buttons in PIN screen circular */
+      div[data-testid="stButton"] button {{
+        width: 76px !important;
+        height: 76px !important;
+        border-radius: 50% !important;
+        background: #F1F5F9 !important;
+        color: #0F172A !important;
+        font-size: 24px !important;
+        font-weight: 300 !important;
+        border: none !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        display: block !important;
+        transition: transform 0.08s ease, background 0.08s ease !important;
+      }}
+      div[data-testid="stButton"] button:hover {{
+        background: #E2E8F0 !important;
+        transform: scale(0.94) !important;
+        opacity: 1 !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07) !important;
+      }}
+      div[data-testid="stButton"] button:active {{
+        transform: scale(0.88) !important;
+        background: #CBD5E1 !important;
       }}
 
-      .pin-keypad {{
-        display: grid;
-        grid-template-columns: repeat(3, 76px);
-        gap: 14px;
+      /* Tighten column gaps for keypad */
+      div[data-testid="stHorizontalBlock"] {{
+        gap: 12px !important;
+        justify-content: center !important;
+        max-width: 280px !important;
+        margin: 0 auto !important;
       }}
-      .pkey {{
-        width: 76px; height: 76px; border-radius: 50%;
-        background: #FFFFFF;
-        border: none; outline: none;
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.09), 0 1px 2px rgba(0,0,0,0.05);
-        transition: transform 0.08s ease, background 0.08s ease;
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }}
-      .pkey:active {{ background: #E2E8F0; transform: scale(0.91); }}
-      .pkey .pnum  {{ font-size: 25px; font-weight: 300; color: #0F172A; line-height: 1; }}
-      .pkey .plet  {{ font-size: 8px; font-weight: 600; color: #94A3B8; letter-spacing: 1.5px; margin-top: 3px; }}
-      .pkey.pempty {{ background: transparent; box-shadow: none; pointer-events: none; }}
-      .pkey.pdel   {{ background: transparent; box-shadow: none; font-size: 20px; color: #374151; }}
-      .pkey.pdel:active {{ background: #E2E8F0; }}
     </style>
 
-    <div class="pin-overlay">
-      <div class="pin-brand">F<em>|</em>QUANT</div>
+    <div class="pin-wrap">
+      <div class="pin-logo">F<em>|</em>QUANT</div>
       <div class="pin-sub">Introduce o teu PIN para continuar</div>
-
-      <div class="pdots" id="pdots">{dot_html}</div>
-      <div class="pin-errmsg" id="perrmsg">{'PIN incorreto. Tenta novamente.' if err else ''}</div>
-
-      <div class="pin-keypad">
-        <div class="pkey" onclick="ppress('1')"><span class="pnum">1</span><span class="plet">&nbsp;</span></div>
-        <div class="pkey" onclick="ppress('2')"><span class="pnum">2</span><span class="plet">ABC</span></div>
-        <div class="pkey" onclick="ppress('3')"><span class="pnum">3</span><span class="plet">DEF</span></div>
-        <div class="pkey" onclick="ppress('4')"><span class="pnum">4</span><span class="plet">GHI</span></div>
-        <div class="pkey" onclick="ppress('5')"><span class="pnum">5</span><span class="plet">JKL</span></div>
-        <div class="pkey" onclick="ppress('6')"><span class="pnum">6</span><span class="plet">MNO</span></div>
-        <div class="pkey" onclick="ppress('7')"><span class="pnum">7</span><span class="plet">PQRS</span></div>
-        <div class="pkey" onclick="ppress('8')"><span class="pnum">8</span><span class="plet">TUV</span></div>
-        <div class="pkey" onclick="ppress('9')"><span class="pnum">9</span><span class="plet">WXYZ</span></div>
-        <div class="pkey pempty"></div>
-        <div class="pkey" onclick="ppress('0')"><span class="pnum">0</span><span class="plet">&nbsp;</span></div>
-        <div class="pkey pdel" onclick="pdel()">⌫</div>
-      </div>
+      <div class="pin-dots">{dot_html}</div>
+      {err_html}
     </div>
-
-    <script>
-      var pbuf = "{pin_val}";
-
-      function getInput() {{
-        // Find Streamlit's hidden text input by its data-testid
-        return document.querySelector('input[aria-label="pin_bridge"], input[type="text"]');
-      }}
-
-      function setInput(val) {{
-        var el = getInput();
-        if (!el) return;
-        var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-        nativeSetter.call(el, val);
-        el.dispatchEvent(new Event('input', {{ bubbles: true }}));
-      }}
-
-      function updateDots() {{
-        var dots = document.querySelectorAll('.pdot');
-        dots.forEach(function(d, i) {{
-          d.classList.toggle('pfilled', i < pbuf.length);
-          d.classList.remove('perror');
-        }});
-        document.getElementById('pdots').classList.remove('pshake');
-        document.getElementById('perrmsg').textContent = '';
-      }}
-
-      function ppress(v) {{
-        if (pbuf.length >= 4) return;
-        if (navigator.vibrate) navigator.vibrate(8);
-        pbuf += v;
-        updateDots();
-        if (pbuf.length === 4) {{
-          // Write to Streamlit input → triggers rerun with the PIN value
-          setInput(pbuf);
-          // Also dispatch change + Enter key to ensure Streamlit picks it up
-          setTimeout(function() {{
-            var el = getInput();
-            if (el) {{
-              el.dispatchEvent(new Event('change', {{ bubbles: true }}));
-              el.dispatchEvent(new KeyboardEvent('keydown', {{ key: 'Enter', keyCode: 13, bubbles: true }}));
-            }}
-          }}, 80);
-        }}
-      }}
-
-      function pdel() {{
-        pbuf = pbuf.slice(0, -1);
-        updateDots();
-        setInput(pbuf);
-      }}
-    </script>
     """, unsafe_allow_html=True)
+
+    # Keypad — pure st.button, no JS needed
+    keymap = [
+        [("1","1"), ("2","2"), ("3","3")],
+        [("4","4"), ("5","5"), ("6","6")],
+        [("7","7"), ("8","8"), ("9","9")],
+        [("",  "_"), ("0","0"), ("⌫","del")],
+    ]
+    for row in keymap:
+        c1, c2, c3 = st.columns(3)
+        for col, (label, val) in zip([c1, c2, c3], row):
+            with col:
+                if val == "_":
+                    st.markdown("<div style='height:76px'></div>", unsafe_allow_html=True)
+                elif st.button(label, key=f"pin_{val}"):
+                    if val == "del":
+                        st.session_state.pin_input = pin[:-1]
+                        st.session_state.pin_error = False
+                    else:
+                        new_pin = pin + val
+                        st.session_state.pin_input = new_pin
+                        st.session_state.pin_error = False
+                        if len(new_pin) == 4:
+                            if new_pin == CORRECT_PIN:
+                                st.session_state.auth      = True
+                                st.session_state.pin_input = ""
+                            else:
+                                st.session_state.pin_error = True
+                                st.session_state.pin_input = ""
+                    st.rerun()
 
     st.stop()
 
