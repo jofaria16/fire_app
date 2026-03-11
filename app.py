@@ -1307,15 +1307,18 @@ with tab3:
                 if vc != done_ex:
                     st.session_state[week_key][ck] = vc; st.rerun()
 
-                circle_html = f'<div class="cr-circle {"done" if done_ex else ""}">{"<span class=cr-check>✓</span>" if done_ex else ""}</div>'
-                series_bg   = f"background:{cor}12;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
-                desc_html   = f'<div class="cr-desc">{desc}</div>' if desc else ""
+                row_cls    = "check-row done" if done_ex else "check-row"
+                name_cls   = "cr-name done"   if done_ex else "cr-name"
+                circle_cls = "cr-circle done" if done_ex else "cr-circle"
+                check_mark = '<span class="cr-check">✓</span>' if done_ex else ""
+                series_bg  = f"background:{cor}18;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
+                desc_html  = f'<div class="cr-desc">{desc}</div>' if desc else ""
 
                 st.markdown(f"""
-                    <div class="check-row {"done" if done_ex else ""}" style="padding-left:18px;padding-right:18px;">
-                        {circle_html}
+                    <div class="{row_cls}" style="padding-left:18px;padding-right:18px;">
+                        <div class="{circle_cls}">{check_mark}</div>
                         <div style="flex:1;min-width:0;">
-                            <div class="cr-name {"done" if done_ex else ""}">{nome}</div>
+                            <div class="{name_cls}">{nome}</div>
                             <span class="cr-series" style="{series_bg}">{series}</span>
                             {desc_html}
                         </div>
