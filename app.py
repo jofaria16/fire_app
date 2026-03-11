@@ -555,7 +555,7 @@ CAT_COLORS    = {"Habitação":"#2563EB","Alimentação":"#059669","Transportes"
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════════
 _defaults = {
-    "auth": False, "pin_buf": "", "pin_shake": False,
+    "auth": False, "pin_input": "", "pin_error": False,
     "edit_pat": None, "edit_flx": None,
     "ticker": "", "treino_edit": False,
 }
@@ -738,104 +738,57 @@ TREINO = {
 CORRECT_PIN = "1214"
 
 if not st.session_state.auth:
-    buf   = st.session_state.pin_buf
-    shake = st.session_state.pin_shake
-    n     = len(buf)
+    pin = st.session_state.pin_input
+    n   = len(pin)
+    err = st.session_state.pin_error
 
-    # ── PIN-specific button style (circular keys) ──────────────────
-    st.markdown("""
-    <style>
-    .stApp { background: #FFFFFF !important; }
-    div.stButton > button {
-        height: 72px !important; width: 72px !important;
-        border-radius: 50% !important;
-        font-size: 22px !important; font-weight: 500 !important;
-        background: #F1F5F9 !important;
-        border: none !important;
-        color: #0F172A !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
-        padding: 0 !important; letter-spacing: 0 !important;
-        display: block !important; margin: 0 auto !important;
-        transition: background 0.1s, transform 0.1s !important;
-    }
-    div.stButton > button:hover {
-        background: #E2E8F0 !important;
-        transform: scale(0.93) !important;
-        opacity: 1 !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-    }
-    div.stButton > button:active {
-        background: #CBD5E1 !important;
-        transform: scale(0.88) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ── Dots ──────────────────────────────────────────────────────
-    dot_color  = "#EF4444" if shake else "#0F172A"
-    dot_border = "#EF4444" if shake else "#CBD5E1"
-    dots_html = "".join([
-        f'<div style="width:14px;height:14px;border-radius:50%;'
-        f'border:2px solid {dot_border if i>=n else dot_color};'
-        f'background:{"transparent" if i>=n else dot_color};'
-        f'transition:all 0.12s ease;transform:{"scale(1.1)" if i==n-1 else "scale(1)"};"></div>'
+    dot_html = "".join([
+        f'<div class="pin-dot {"filled" if i < n else ""} {"error" if err else ""}"></div>'
         for i in range(4)
     ])
+    err_msg = "PIN incorreto. Tenta novamente." if err else ""
 
-    # ── Header ────────────────────────────────────────────────────
     st.markdown(f"""
-        <div style="text-align:center;padding:60px 0 8px;">
-            <div style="font-size:30px;font-weight:900;color:#0F172A;letter-spacing:-1px;margin-bottom:6px;">
-                F<span style="color:#2563EB;">|</span>QUANT
-            </div>
-            <div style="font-size:14px;color:#94A3B8;margin-bottom:52px;">Introduce o teu PIN</div>
-            <div style="display:flex;gap:20px;justify-content:center;margin-bottom:52px;">
-                {dots_html}
-            </div>
+        <div class="pin-screen">
+            <div class="pin-logo">F<span>|</span>QUANT</div>
+            <div class="pin-subtitle">Introduce o teu PIN para continuar</div>
+            <div class="pin-dots">{dot_html}</div>
         </div>
     """, unsafe_allow_html=True)
 
-    # ── Keypad ────────────────────────────────────────────────────
-    keymap = [
-        [("1","1"),("2","2"),("3","3")],
-        [("4","4"),("5","5"),("6","6")],
-        [("7","7"),("8","8"),("9","9")],
-        [("","_"), ("0","0"),("⌫","del")],
+    keys = [
+        ("1","1"),("2","2"),("3","3"),
+        ("4","4"),("5","5"),("6","6"),
+        ("7","7"),("8","8"),("9","9"),
+        ("","empty"),("0","0"),("⌫","del"),
     ]
-    for row in keymap:
-        c1, c2, c3 = st.columns([1,1,1], gap="small")
-        for col, (label, val) in zip([c1,c2,c3], row):
+    rows = [keys[i:i+3] for i in range(0, len(keys), 3)]
+    for row in rows:
+        cols = st.columns(3)
+        for col, (label, val) in zip(cols, row):
             with col:
-                if val == "_":
-                    st.markdown("<div style='height:72px'></div>", unsafe_allow_html=True)
-                    continue
-                if st.button(label, key=f"pk_{val}"):
+                if val == "empty":
+                    st.markdown("<div style='height:60px'></div>", unsafe_allow_html=True)
+                elif st.button(label, key=f"pin_{val}"):
                     if val == "del":
-                        st.session_state.pin_buf   = buf[:-1]
-                        st.session_state.pin_shake = False
+                        st.session_state.pin_input = pin[:-1]
+                        st.session_state.pin_error = False
                     else:
-                        new = buf + val
-                        if len(new) <= 4:
-                            st.session_state.pin_buf   = new
-                            st.session_state.pin_shake = False
-                            if len(new) == 4:          # ← auto-submit at 4 digits
-                                if new == CORRECT_PIN:
-                                    st.session_state.auth      = True
-                                    st.session_state.pin_buf   = ""
-                                    st.session_state.pin_shake = False
+                        new_pin = pin + val
+                        if len(new_pin) <= 4:
+                            st.session_state.pin_input = new_pin
+                            st.session_state.pin_error = False
+                            if len(new_pin) == 4:  # auto-submit ao 4º dígito
+                                if new_pin == CORRECT_PIN:
+                                    st.session_state.auth = True
+                                    st.session_state.pin_input = ""
                                 else:
-                                    st.session_state.pin_shake = True
-                                    st.session_state.pin_buf   = ""
+                                    st.session_state.pin_error = True
+                                    st.session_state.pin_input = ""
                     st.rerun()
 
-    if shake:
-        st.markdown("""
-            <div style="text-align:center;color:#EF4444;font-size:13px;
-                font-weight:600;margin-top:20px;animation:fadeUp 0.2s ease;">
-                PIN incorreto. Tenta novamente.
-            </div>
-        """, unsafe_allow_html=True)
-
+    if err_msg:
+        st.markdown(f'<div class="pin-error-msg">{err_msg}</div>', unsafe_allow_html=True)
     st.stop()
 
 
