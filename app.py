@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # noqa: F401 — used for PIN keypad
 import pandas as pd
 import os
 from datetime import datetime
@@ -476,6 +477,10 @@ label[data-testid="stWidgetLabel"] p {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes pulse-dot {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.18); }
+}
 @keyframes shake {
     0%,100% { transform: translateX(0); }
     15%  { transform: translateX(-7px); }
@@ -524,6 +529,32 @@ label[data-testid="stWidgetLabel"] p {
 .pin-error-msg  {
     text-align: center; color: #EF4444;
     font-size: 13px; font-weight: 600; margin-top: 12px;
+}
+
+/* ─── PIN KEYPAD BUTTONS ──────────────────────────────────────────── */
+/* Scoped override: only applies inside .pin-row wrappers */
+.pin-row { display: flex; justify-content: center; gap: 0; margin-bottom: 4px; }
+.pin-row [data-testid="column"] { flex: 0 0 100px !important; max-width: 100px !important; }
+.pin-row div.stButton > button {
+    width: 72px !important; height: 72px !important;
+    border-radius: 50% !important;
+    background: #F1F5F9 !important;
+    color: #0F172A !important;
+    font-size: 22px !important; font-weight: 500 !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07) !important;
+    padding: 0 !important; letter-spacing: 0 !important;
+    margin: 0 auto !important;
+    transition: background 0.1s, transform 0.1s !important;
+}
+.pin-row div.stButton > button:hover {
+    background: #E2E8F0 !important;
+    transform: scale(0.93) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    opacity: 1 !important;
+}
+.pin-row div.stButton > button:active {
+    background: #CBD5E1 !important; transform: scale(0.88) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -759,103 +790,201 @@ TREINO = {
 }
 
 # ══════════════════════════════════════════════════════════════════════
-# PIN AUTH — NATIVE STREAMLIT
+# PIN AUTH — Full HTML keypad, iPhone-style
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
-if not st.session_state.auth:
-    st.markdown('<div class="is-pin-screen"></div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <style>
-    /* CSS específico para os botões nativos quando o ecrã do PIN está ativo */
-    div[data-testid="stApp"]:has(.is-pin-screen) [data-testid="column"] {
-        flex: 0 0 100px !important; max-width: 100px !important;
-    }
-    div[data-testid="stApp"]:has(.is-pin-screen) [data-testid="stHorizontalBlock"] {
-        justify-content: center; margin-bottom: 4px; gap: 0;
-    }
-    div[data-testid="stApp"]:has(.is-pin-screen) div.stButton > button {
-        width: 72px !important; height: 72px !important;
-        border-radius: 50% !important;
-        background: #FFFFFF !important;
-        color: #0F172A !important;
-        font-size: 26px !important; font-weight: 300 !important;
-        border: none !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
-        padding: 0 !important; margin: 0 auto !important;
-        transition: background 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease !important;
-    }
-    div[data-testid="stApp"]:has(.is-pin-screen) div.stButton > button:hover {
-        background: #E2E8F0 !important;
-        transform: scale(0.91) !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-        opacity: 1 !important;
-    }
-    div[data-testid="stApp"]:has(.is-pin-screen) div.stButton > button:active {
-        background: #CBD5E1 !important; transform: scale(0.88) !important;
-    }
-    div[data-testid="stApp"]:has(.is-pin-screen) div.stButton > button:disabled {
-        background: transparent !important; box-shadow: none !important; color: transparent !important; pointer-events: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="pin-screen">', unsafe_allow_html=True)
-    st.markdown('<div class="pin-logo">F<span>|QUANT</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="pin-subtitle">Insere o teu PIN para continuar</div>', unsafe_allow_html=True)
-    
-    # Renderiza as bolinhas pretas de progresso
-    dots_html = f'<div class="pin-dots {"shake" if st.session_state.pin_error else ""}">'
-    for i in range(4):
-        filled = "filled" if i < len(st.session_state.pin_input) else ""
-        error = "error" if st.session_state.pin_error else ""
-        dots_html += f'<div class="pin-dot {filled} {error}"></div>'
-    dots_html += '</div>'
-    st.markdown(dots_html, unsafe_allow_html=True)
-
-    if st.session_state.pin_error:
-        st.markdown('<div class="pin-error-msg">PIN incorreto. Tenta novamente.</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="pin-error-msg" style="visibility:hidden;">-</div>', unsafe_allow_html=True)
-
-    # Lógica que envia o login no último dígito
-    def press(n):
-        if len(st.session_state.pin_input) < 4:
-            st.session_state.pin_input += str(n)
-            st.session_state.pin_error = False
-            if len(st.session_state.pin_input) == 4:
-                if st.session_state.pin_input == CORRECT_PIN:
-                    st.session_state.auth = True
-                    st.session_state.pin_input = ""
-                else:
-                    st.session_state.pin_error = True
-                    st.session_state.pin_input = ""
-
-    def delete():
-        if len(st.session_state.pin_input) > 0:
-            st.session_state.pin_input = st.session_state.pin_input[:-1]
+# Check if JS submitted a PIN via query param
+qp = st.query_params
+if not st.session_state.auth and "pin" in qp:
+    submitted = qp["pin"]
+    st.query_params.clear()
+    if submitted == CORRECT_PIN:
+        st.session_state.auth = True
+        st.session_state.pin_input = ""
         st.session_state.pin_error = False
+    else:
+        st.session_state.pin_error = True
+        st.session_state.pin_input = ""
+    st.rerun()
 
-    # Layout de teclado em botões Python (não dependem de iframes manhosos!)
-    for row in [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]:
-        cols = st.columns(3)
-        for i, num in enumerate(row):
-            if cols[i].button(num, key=f"btn_{num}"):
-                press(num)
-                st.rerun()
+if not st.session_state.auth:
+    err = st.session_state.pin_error
 
-    cols = st.columns(3)
-    cols[0].button(" ", key="btn_empty", disabled=True)
-    if cols[1].button("0", key="btn_0"):
-        press("0")
-        st.rerun()
-    if cols[2].button("⌫", key="btn_del"):
-        delete()
-        st.rerun()
+    pin_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }}
+  html, body {{
+    height: 100%; width: 100%;
+    background: #F0F2F5;
+    font-family: -apple-system, 'SF Pro Display', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    user-select: none;
+  }}
 
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # Isto impede que o resto da App carregue sem o PIN
+  .logo {{
+    font-size: 26px; font-weight: 800;
+    color: #0F172A; letter-spacing: -0.8px;
+    margin-bottom: 6px;
+  }}
+  .logo em {{ color: #2563EB; font-style: normal; }}
+
+  .subtitle {{
+    font-size: 14px; color: #94A3B8;
+    margin-bottom: 40px;
+  }}
+
+  /* ── dots ── */
+  .dots {{
+    display: flex; gap: 16px;
+    margin-bottom: 48px;
+    justify-content: center;
+  }}
+  .dot {{
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid #CBD5E1;
+    background: transparent;
+    transition: all 0.12s ease;
+  }}
+  .dot.filled {{ background: #0F172A; border-color: #0F172A; transform: scale(1.12); }}
+  .dot.error  {{ background: #EF4444; border-color: #EF4444; }}
+
+  @keyframes shake {{
+    0%,100% {{ transform: translateX(0); }}
+    20%      {{ transform: translateX(-8px); }}
+    40%      {{ transform: translateX(8px); }}
+    60%      {{ transform: translateX(-5px); }}
+    80%      {{ transform: translateX(5px); }}
+  }}
+  .dots.shake {{ animation: shake 0.4s ease; }}
+
+  /* ── error msg ── */
+  .error-msg {{
+    height: 18px; margin-bottom: 16px;
+    font-size: 13px; font-weight: 600;
+    color: #EF4444; text-align: center;
+  }}
+
+  /* ── keypad ── */
+  .keypad {{
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    grid-template-rows: repeat(4, 80px);
+    gap: 12px;
+  }}
+  .key {{
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    border: none;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    transition: background 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease;
+    -webkit-touch-callout: none;
+  }}
+  .key:active {{
+    background: #E2E8F0;
+    transform: scale(0.91);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }}
+  .key .num {{
+    font-size: 26px; font-weight: 300;
+    color: #0F172A; line-height: 1;
+  }}
+  .key .letters {{
+    font-size: 8px; font-weight: 600;
+    color: #94A3B8; letter-spacing: 1.5px;
+    margin-top: 3px;
+  }}
+  .key.empty {{
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+    pointer-events: none;
+  }}
+  .key.del {{
+    background: transparent;
+    box-shadow: none;
+    font-size: 22px; color: #374151;
+  }}
+  .key.del:active {{ background: #E2E8F0; }}
+</style>
+</head>
+<body>
+
+<div class="logo">F<em>|</em>QUANT</div>
+<div class="subtitle">Introduce o teu PIN para continuar</div>
+
+<div class="dots {'shake' if err else ''}" id="dots">
+  <div class="dot {'error' if err else ''}"></div>
+  <div class="dot {'error' if err else ''}"></div>
+  <div class="dot {'error' if err else ''}"></div>
+  <div class="dot {'error' if err else ''}"></div>
+</div>
+
+<div class="error-msg">{'PIN incorreto. Tenta novamente.' if err else ''}</div>
+
+<div class="keypad">
+  <div class="key" onclick="press('1')"><span class="num">1</span><span class="letters">&nbsp;</span></div>
+  <div class="key" onclick="press('2')"><span class="num">2</span><span class="letters">ABC</span></div>
+  <div class="key" onclick="press('3')"><span class="num">3</span><span class="letters">DEF</span></div>
+  <div class="key" onclick="press('4')"><span class="num">4</span><span class="letters">GHI</span></div>
+  <div class="key" onclick="press('5')"><span class="num">5</span><span class="letters">JKL</span></div>
+  <div class="key" onclick="press('6')"><span class="num">6</span><span class="letters">MNO</span></div>
+  <div class="key" onclick="press('7')"><span class="num">7</span><span class="letters">PQRS</span></div>
+  <div class="key" onclick="press('8')"><span class="num">8</span><span class="letters">TUV</span></div>
+  <div class="key" onclick="press('9')"><span class="num">9</span><span class="letters">WXYZ</span></div>
+  <div class="key empty"></div>
+  <div class="key" onclick="press('0')"><span class="num">0</span><span class="letters">&nbsp;</span></div>
+  <div class="key del" onclick="del()">⌫</div>
+</div>
+
+<script>
+  var buf = "";
+
+  function updateDots() {{
+    var dots = document.querySelectorAll(".dot");
+    dots.forEach(function(d, i) {{
+      d.classList.toggle("filled", i < buf.length);
+      d.classList.remove("error");
+    }});
+  }}
+
+  function press(v) {{
+    if (buf.length >= 4) return;
+    if (navigator.vibrate) navigator.vibrate(8);
+    buf += v;
+    updateDots();
+    if (buf.length === 4) {{
+      // submit via URL query param — Streamlit reads it on next rerun
+      setTimeout(function() {{
+        var url = new URL(window.parent.location.href);
+        url.searchParams.set("pin", buf);
+        window.parent.location.href = url.toString();
+      }}, 120);
+    }}
+  }}
+
+  function del() {{
+    buf = buf.slice(0, -1);
+    updateDots();
+  }}
+</script>
+</body>
+</html>
+"""
+
+    st.components.v1.html(pin_html, height=620, scrolling=False)
+    st.stop()
+
 
 # ══════════════════════════════════════════════════════════════════════
 # APP SHELL
