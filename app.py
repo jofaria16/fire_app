@@ -1279,8 +1279,17 @@ with tab3:
             total = len(exs)
             pct   = int(done / total * 100) if total > 0 else 0
             bc    = "#059669" if pct == 100 else cor if pct > 0 else "#CBD5E1"
-            badge_bg  = "#ECFDF5" if pct==100 else f"{cor}15" if pct>0 else "#F8FAFC"
-            badge_txt = "#059669" if pct==100 else cor if pct>0 else "#94A3B8"
+
+            badge_bg  = "#ECFDF5" if pct == 100 else f"{cor}22" if pct > 0 else "#F8FAFC"
+            badge_txt = "#059669" if pct == 100 else cor         if pct > 0 else "#94A3B8"
+            badge_lbl = "✓ Completo" if pct == 100 else f"{done}/{total}"
+
+            # Build warmup block safely
+            if dados["warmup"]:
+                wu_items = " &nbsp;·&nbsp; ".join(dados["warmup"])
+                warmup_html = f'<div class="day-body" style="padding-bottom:0;"><div class="warmup-strip"><strong>Aquecimento &nbsp;</strong>{wu_items}</div></div>'
+            else:
+                warmup_html = ""
 
             st.markdown(f"""
                 <div class="day-card fade-up" style="border-top:3px solid {cor};">
@@ -1289,11 +1298,11 @@ with tab3:
                             <div class="day-title">{dia}</div>
                             <div class="day-sub">{dados["sub"]}</div>
                         </div>
-                        <div class="day-badge" style="background:{badge_bg};color:{badge_txt};">{"✓ Completo" if pct==100 else f"{done}/{total}"}</div>
+                        <div class="day-badge" style="background:{badge_bg};color:{badge_txt};">{badge_lbl}</div>
                     </div>
-                    {"" if not dados["warmup"] else f'<div class="day-body" style="padding-bottom:0;"><div class="warmup-strip"><strong>Aquecimento</strong>' + " &nbsp;·&nbsp; ".join(dados["warmup"]) + "</div></div>"}
-                    <div class="day-body" style="padding-top:{'0' if dados['warmup'] else '0'};">
-                        <div class="prog-track" style="margin:0 0 12px;">
+                    {warmup_html}
+                    <div class="day-body">
+                        <div class="prog-track" style="margin:0 0 4px;">
                             <div class="prog-fill" style="width:{pct}%;background:{bc};"></div>
                         </div>
                     </div>
@@ -1305,22 +1314,24 @@ with tab3:
                 done_ex = st.session_state[week_key].get(ck, False)
                 vc      = st.checkbox("", value=done_ex, key=f"ck_{ck}_{week_key}", label_visibility="collapsed")
                 if vc != done_ex:
-                    st.session_state[week_key][ck] = vc; st.rerun()
+                    st.session_state[week_key][ck] = vc
+                    st.rerun()
 
+                # Build all class names and HTML fragments as plain variables
                 row_cls    = "check-row done" if done_ex else "check-row"
                 name_cls   = "cr-name done"   if done_ex else "cr-name"
                 circle_cls = "cr-circle done" if done_ex else "cr-circle"
                 check_mark = '<span class="cr-check">✓</span>' if done_ex else ""
-                series_bg  = f"background:{cor}18;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
-                desc_html  = f'<div class="cr-desc">{desc}</div>' if desc else ""
+                series_style = f"background:{cor}18;color:{cor};" if not done_ex else "background:#F1F5F9;color:#94A3B8;"
+                desc_block   = f'<div class="cr-desc">{desc}</div>' if desc else ""
 
                 st.markdown(f"""
                     <div class="{row_cls}" style="padding-left:18px;padding-right:18px;">
                         <div class="{circle_cls}">{check_mark}</div>
                         <div style="flex:1;min-width:0;">
                             <div class="{name_cls}">{nome}</div>
-                            <span class="cr-series" style="{series_bg}">{series}</span>
-                            {desc_html}
+                            <span class="cr-series" style="{series_style}">{series}</span>
+                            {desc_block}
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -1332,7 +1343,8 @@ with tab3:
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         if st.button("↺ Reiniciar Semana", key="reset_week"):
-            st.session_state[week_key] = {}; st.rerun()
+            st.session_state[week_key] = {}
+            st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════
