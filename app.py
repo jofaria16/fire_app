@@ -611,69 +611,18 @@ CAT_COLORS    = {"Habitação":"#2563EB","Alimentação":"#059669","Transportes"
 # ══════════════════════════════════════════════════════════════════════
 # SESSION STATE
 # ══════════════════════════════════════════════════════════════════════
-import streamlit as st
-from datetime import datetime
-
-# ══════════════════════════════════════════════════════════════════════
-# SESSION STATE
-# ══════════════════════════════════════════════════════════════════════
 _defaults = {
-    "auth": False,
-    "pin_input": "",
-    "pin_error": False,
-    "edit_pat": None,
-    "edit_flx": None,
-    "ticker": "",
-    "treino_edit": False,
+    "auth": False, "pin_input": "", "pin_error": False,
+    "edit_pat": None, "edit_flx": None,
+    "ticker": "", "treino_edit": False,
 }
 for k, v in _defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# Variável semanal (opcional)
 week_key = f"w{datetime.now().isocalendar()[1]}"
 if week_key not in st.session_state:
     st.session_state[week_key] = {}
-
-# ══════════════════════════════════════════════════════════════════════
-# FUNÇÃO PARA VALIDAR O PIN AUTOMATICAMENTE
-# ══════════════════════════════════════════════════════════════════════
-CORRECT_PIN = "1234"  # Substitui pelo PIN que queres usar
-
-def check_pin():
-    # Só valida quando tiver 4 dígitos
-    if len(st.session_state.pin_input) == 4:
-        if st.session_state.pin_input == CORRECT_PIN:
-            st.session_state.auth = True
-            st.success("Login efetuado!")
-        else:
-            st.session_state.pin_error = True
-            st.session_state.pin_input = ""  # Limpa automaticamente
-
-# ══════════════════════════════════════════════════════════════════════
-# INPUT DO PIN
-# ══════════════════════════════════════════════════════════════════════
-pin = st.text_input(
-    "Digite o PIN",
-    value=st.session_state.pin_input,
-    max_chars=4,
-    type="password",
-    key="pin_input",
-    on_change=check_pin  # chama a função automaticamente
-)
-
-# Mostrar erro se o PIN estiver errado
-if st.session_state.pin_error:
-    st.error("PIN incorreto!")
-    st.session_state.pin_error = False  # reseta o erro
-
-# ══════════════════════════════════════════════════════════════════════
-# EXEMPLO DE USO DO LOGIN
-# ══════════════════════════════════════════════════════════════════════
-if st.session_state.auth:
-    st.write("✅ Bem-vindo! Autenticado com sucesso.")
-else:
-    st.write("Por favor, digite o PIN para entrar.")
 
 # ══════════════════════════════════════════════════════════════════════
 # FINANCE ENGINE
@@ -1676,4 +1625,3 @@ st.markdown("""
         F|QUANT &nbsp;·&nbsp; Personal Edition
     </div>
 """, unsafe_allow_html=True)
-
