@@ -794,162 +794,70 @@ TREINO = {
 # ══════════════════════════════════════════════════════════════════════
 CORRECT_PIN = "1214"
 
-# Read PIN submitted by JS via query param
 if not st.session_state.auth:
-    qp = st.query_params
-    if "pin" in qp:
-        submitted = qp.get("pin", "")
-        st.query_params.clear()
-        if submitted == CORRECT_PIN:
+    err = st.session_state.pin_error
+
+    st.markdown(f"""
+    <style>
+      .stApp, [data-testid="stAppViewContainer"] {{ background:#FFFFFF !important; }}
+      header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"],
+      [data-testid="stStatusWidget"], #MainMenu {{ display:none !important; }}
+      .block-container {{ padding:0 !important; }}
+
+      [data-testid="stVerticalBlock"] {{
+        display:flex !important; flex-direction:column !important;
+        align-items:center !important; justify-content:center !important;
+        min-height:100vh !important; gap:0 !important;
+      }}
+
+      div[data-testid="stTextInput"] {{ width:200px !important; }}
+      div[data-testid="stTextInput"] input {{
+        font-size:36px !important; font-weight:700 !important;
+        letter-spacing:18px !important; text-align:center !important;
+        border:none !important; border-bottom:2px solid #CBD5E1 !important;
+        border-radius:0 !important; background:transparent !important;
+        box-shadow:none !important; padding:8px 0 !important;
+        color:#0F172A !important;
+      }}
+      div[data-testid="stTextInput"] input:focus {{
+        border-bottom-color:#2563EB !important; box-shadow:none !important;
+      }}
+      div[data-testid="stTextInput"] label {{ display:none !important; }}
+    </style>
+
+    <div style="text-align:center; padding-bottom:4px;">
+      <div style="font-size:26px;font-weight:800;color:#0F172A;letter-spacing:-0.8px;margin-bottom:6px;">
+        F<span style="color:#2563EB;">|</span>QUANT
+      </div>
+      <div style="font-size:14px;color:#94A3B8;margin-bottom:40px;">
+        Introduce o teu PIN para continuar
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    pin_typed = st.text_input(
+        "PIN", value="", max_chars=4, type="password",
+        key="pin_input", label_visibility="collapsed",
+    )
+
+    if err:
+        st.markdown("""
+            <div style="font-size:13px;font-weight:600;color:#EF4444;
+                        text-align:center;margin-top:12px;">
+              PIN incorreto. Tenta novamente.
+            </div>
+        """, unsafe_allow_html=True)
+
+    if len(pin_typed) == 4:
+        if pin_typed == CORRECT_PIN:
             st.session_state.auth      = True
             st.session_state.pin_error = False
         else:
             st.session_state.pin_error = True
+        st.session_state.pin_input = ""
         st.rerun()
 
-if not st.session_state.auth:
-    err = st.session_state.pin_error
-
-    dot_states = ["filled" if i < 0 else "" for i in range(4)]  # start empty
-    dots_html  = "".join([f'<div class="dot" id="d{i}"></div>' for i in range(4)])
-    err_txt    = "PIN incorreto. Tenta novamente." if err else ""
-    shake_cls  = "shake" if err else ""
-
-    st.markdown(f"""
-    <style>
-      .stApp, [data-testid="stAppViewContainer"] {{
-        background: #FFFFFF !important;
-      }}
-      /* Hide all Streamlit chrome on PIN screen */
-      header, footer, [data-testid="stToolbar"],
-      [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-      #MainMenu {{ display: none !important; }}
-      .block-container {{ padding: 0 !important; }}
-    </style>
-
-    <div style="
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 100vh;
-      background: #FFFFFF; font-family: -apple-system, 'Inter', sans-serif;
-      padding: 0 24px;
-    ">
-      <!-- Logo -->
-      <div style="font-size:26px; font-weight:800; color:#0F172A;
-                  letter-spacing:-0.8px; margin-bottom:6px;">
-        F<span style="color:#2563EB;">|</span>QUANT
-      </div>
-      <div style="font-size:14px; color:#94A3B8; margin-bottom:48px;">
-        Introduce o teu PIN para continuar
-      </div>
-
-      <!-- Dots -->
-      <div id="dots" style="display:flex; gap:18px; margin-bottom:16px;" class="{shake_cls}">
-        <div class="dot" id="d0"></div>
-        <div class="dot" id="d1"></div>
-        <div class="dot" id="d2"></div>
-        <div class="dot" id="d3"></div>
-      </div>
-
-      <!-- Error message -->
-      <div id="errmsg" style="
-        height:20px; font-size:13px; font-weight:600;
-        color:#EF4444; margin-bottom:40px; text-align:center;
-      ">{err_txt}</div>
-
-      <!-- Keypad grid -->
-      <div style="
-        display: grid;
-        grid-template-columns: repeat(3, 80px);
-        grid-template-rows: repeat(4, 80px);
-        gap: 12px;
-      ">
-        <div class="k" onclick="p('1')"><span class="n">1</span></div>
-        <div class="k" onclick="p('2')"><span class="n">2</span><span class="l">ABC</span></div>
-        <div class="k" onclick="p('3')"><span class="n">3</span><span class="l">DEF</span></div>
-        <div class="k" onclick="p('4')"><span class="n">4</span><span class="l">GHI</span></div>
-        <div class="k" onclick="p('5')"><span class="n">5</span><span class="l">JKL</span></div>
-        <div class="k" onclick="p('6')"><span class="n">6</span><span class="l">MNO</span></div>
-        <div class="k" onclick="p('7')"><span class="n">7</span><span class="l">PQRS</span></div>
-        <div class="k" onclick="p('8')"><span class="n">8</span><span class="l">TUV</span></div>
-        <div class="k" onclick="p('9')"><span class="n">9</span><span class="l">WXYZ</span></div>
-        <div style="width:80px;height:80px;"></div>
-        <div class="k" onclick="p('0')"><span class="n">0</span></div>
-        <div class="k kdel" onclick="del()">⌫</div>
-      </div>
-    </div>
-
-    <style>
-      .dot {{
-        width:14px; height:14px; border-radius:50%;
-        border:2px solid #CBD5E1; background:transparent;
-        transition: all 0.12s ease;
-      }}
-      .dot.filled {{ background:#0F172A; border-color:#0F172A; transform:scale(1.12); }}
-      .dot.error  {{ background:#EF4444; border-color:#EF4444; }}
-
-      @keyframes shake {{
-        0%,100% {{ transform:translateX(0); }}
-        20%  {{ transform:translateX(-9px); }}
-        40%  {{ transform:translateX(9px); }}
-        60%  {{ transform:translateX(-5px); }}
-        80%  {{ transform:translateX(5px); }}
-      }}
-      .shake {{ animation: shake 0.38s ease; }}
-
-      .k {{
-        width:80px; height:80px; border-radius:50%;
-        background:#F1F5F9;
-        display:flex; flex-direction:column;
-        align-items:center; justify-content:center;
-        cursor:pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: transform 0.08s ease, background 0.08s ease;
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }}
-      .k:active {{ background:#D1D5DB; transform:scale(0.91); }}
-      .n {{ font-size:26px; font-weight:300; color:#0F172A; line-height:1; }}
-      .l {{ font-size:8px; font-weight:600; color:#94A3B8; letter-spacing:1.5px; margin-top:3px; }}
-      .kdel {{ background:transparent; box-shadow:none; font-size:20px; color:#374151; }}
-      .kdel:active {{ background:#E2E8F0; }}
-    </style>
-
-    <script>
-      var buf = "";
-
-      function updateDots() {{
-        for (var i = 0; i < 4; i++) {{
-          var d = document.getElementById("d" + i);
-          d.className = "dot" + (i < buf.length ? " filled" : "");
-        }}
-        document.getElementById("errmsg").textContent = "";
-        document.getElementById("dots").classList.remove("shake");
-      }}
-
-      function p(v) {{
-        if (buf.length >= 4) return;
-        if (navigator.vibrate) navigator.vibrate(8);
-        buf += v;
-        updateDots();
-        if (buf.length === 4) {{
-          // Submit PIN by navigating the parent page URL with ?pin=
-          setTimeout(function() {{
-            var url = new URL(window.location.href);
-            url.searchParams.set("pin", buf);
-            window.location.href = url.toString();
-          }}, 120);
-        }}
-      }}
-
-      function del() {{
-        buf = buf.slice(0, -1);
-        updateDots();
-      }}
-    </script>
-    """, unsafe_allow_html=True)
-
     st.stop()
-
 
 
 # ══════════════════════════════════════════════════════════════════════
