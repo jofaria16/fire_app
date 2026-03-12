@@ -963,25 +963,26 @@ with tab1:
         platforms = [("T212","Trading 212","#2563EB"), ("IBKR","IBKR","#059669"),
                      ("CRY","Crypto","#D97706"),       ("PPR","PPR","#7C3AED")]
 
-        _pcards = []
+        grid_html = '<div class="platform-grid">'
         for cn, label, color in platforms:
-            if cn not in df_p.columns: continue
-            cur = float(latest.get(cn, 0) or 0)
-            prv = float(prev_r.get(cn, 0) or 0)
+            cur = float(latest.get(cn, 0) or 0) if cn in df_p.columns else 0.0
+            prv = float(prev_r.get(cn, 0) or 0) if cn in df_p.columns else 0.0
             d   = cur - prv
-            dp  = (d / prv * 100) if prv > 0 else 0
+            dp  = (d / prv * 100) if prv > 0 else 0.0
             s   = "+" if d >= 0 else ""
             dc  = "#059669" if d >= 0 else "#DC2626"
             bw  = int(cur / tot * 100) if tot > 0 else 0
-            _pcards.append(f"""
-                <div class="platform-card">
-                    <div class="pc-label">{label}</div>
-                    <div class="pc-value" style="color:{color};">{cur:,.0f}€</div>
-                    <div class="pc-delta" style="color:{dc};">{s}{d:,.0f}€ &nbsp;·&nbsp; {s}{dp:.1f}%</div>
-                    <div class="pc-bar"><div class="pc-fill" style="width:{bw}%;background:{color};"></div></div>
-                </div>
-            """)
-        st.markdown('<div class="platform-grid">' + "".join(_pcards) + '</div>', unsafe_allow_html=True)
+            grid_html += (
+                '<div class="platform-card">'
+                + '<div class="pc-label">' + label + '</div>'
+                + '<div class="pc-value" style="color:' + color + ';">' + f'{cur:,.0f}' + '€</div>'
+                + '<div class="pc-delta" style="color:' + dc + ';">' + s + f'{d:,.0f}' + '€ &nbsp;·&nbsp; ' + s + f'{dp:.1f}' + '%</div>'
+                + '<div class="pc-bar"><div class="pc-fill" style="width:' + str(bw) + '%;background:' + color + ';"></div></div>'
+                + '</div>'
+            )
+        grid_html += '</div>'
+        st.markdown(grid_html, unsafe_allow_html=True)
+
 
     else:
         st.markdown("""
