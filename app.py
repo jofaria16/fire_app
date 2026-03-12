@@ -918,12 +918,13 @@ now = datetime.now()
 day_names = {0:"Segunda",1:"Terça",2:"Quarta",3:"Quinta",4:"Sexta",5:"Sábado",6:"Domingo"}
 today_name = day_names[now.weekday()]
 
-st.markdown(f"""
-    <div class="topbar">
-        <div class="topbar-brand">F<em>|</em>QUANT</div>
-        <div class="topbar-date">{today_name}, {now.strftime("%-d %b")}</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div class="topbar">'
+    + '<div class="topbar-brand">F<em>|</em>QUANT</div>'
+    + '<div class="topbar-date">' + today_name + ', ' + now.strftime("%-d %b") + '</div>'
+    + '</div>',
+    unsafe_allow_html=True
+)
 
 tab1, tab2, tab3, tab4 = st.tabs(["Património", "Fluxo", "Treino", "Análise"])
 
@@ -944,17 +945,16 @@ with tab1:
         arrow = "↑" if dlt >= 0 else "↓"
         pill_cls = "up" if dlt >= 0 else "down"
 
-        st.markdown(f"""
-            <div class="hero fade-up">
-                <div class="hero-eyebrow">Total Investido</div>
-                <div class="hero-amount">{tot:,.0f}<sup>EUR</sup></div>
-                <div class="hero-delta">
-                    {arrow}
-                    <span class="hero-pill {pill_cls}">{sign}{dlt:,.0f} € &nbsp;·&nbsp; {sign}{dpct:.1f}%</span>
-                    <span style="font-size:11px; opacity:0.5;">vs mês anterior</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="hero fade-up">'
+            + '<div class="hero-eyebrow">Total Investido</div>'
+            + '<div class="hero-amount">' + f"{tot:,.0f}" + '<sup>EUR</sup></div>'
+            + '<div class="hero-delta">' + arrow
+            + '<span class="hero-pill ' + pill_cls + '">' + sign + f"{dlt:,.0f}" + ' € &nbsp;·&nbsp; ' + sign + f"{dpct:.1f}" + '%</span>'
+            + '<span style="font-size:11px; opacity:0.5;">vs mês anterior</span>'
+            + '</div></div>',
+            unsafe_allow_html=True
+        )
 
         # ── Platform grid ─────────────────────────────────────────────
         st.markdown('<div class="section-label">Carteiras</div>', unsafe_allow_html=True)
@@ -1003,12 +1003,11 @@ with tab1:
         v3 = c1.number_input("Crypto (€)",        min_value=0.0, format="%.2f", key="v3")
         v4 = c2.number_input("PPR / Outros (€)",  min_value=0.0, format="%.2f", key="v4")
         tot_inp = v1 + v2 + v3 + v4
-        st.markdown(f"""
-            <div class="total-preview">
-                <span>Total do mês</span>
-                <strong>{tot_inp:,.2f} €</strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="total-preview"><span>Total do mês</span>'
+            + '<strong>' + f"{tot_inp:,.2f}" + ' €</strong></div>',
+            unsafe_allow_html=True
+        )
         if st.button("Gravar Património", key="btn_pat"):
             row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":tot_inp}])
             save_db(pd.concat([df_p, row], ignore_index=True), "patrimonio")
@@ -1039,17 +1038,18 @@ with tab1:
                 sub = f'T212 {float(r.get("T212",0) or 0):,.0f} · IBKR {float(r.get("IBKR",0) or 0):,.0f} · Crypto {float(r.get("CRY",0) or 0):,.0f} · PPR {float(r.get("PPR",0) or 0):,.0f}'
                 cc, ce, cd = st.columns([10, 1, 1])
                 with cc:
-                    st.markdown(f"""
-                        <div class="list-row">
-                            <div class="lr-left">
-                                <div class="lr-title">{r["Mês"]}</div>
-                                <div class="lr-sub">{sub}</div>
-                            </div>
-                            <div class="lr-right">
-                                <div class="lr-value">{float(r["Total"]):,.0f}€</div>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(
+                        '<div class="list-row">'
+                        + '<div class="lr-left">'
+                        + '<div class="lr-title">' + str(r["Mês"]) + '</div>'
+                        + '<div class="lr-sub">' + sub + '</div>'
+                        + '</div>'
+                        + '<div class="lr-right">'
+                        + '<div class="lr-value">' + f'{float(r["Total"]):,.0f}' + '€</div>'
+                        + '</div>'
+                        + '</div>',
+                        unsafe_allow_html=True
+                    )
                 with ce:
                     if st.button("✏️", key=f"pe_{i}"):
                         st.session_state.edit_pat = i; st.rerun()
@@ -1077,16 +1077,16 @@ with tab2:
         bw    = min(int(taxa), 100)
         tc    = "rgba(255,255,255,0.85)"
 
-        st.markdown(f"""
-            <div class="savings-hero fade-up">
-                <div class="savings-label">Taxa de Poupança Média</div>
-                <div class="savings-big">{taxa:.1f}<span style="font-size:0.4em;opacity:0.6;font-weight:500;letter-spacing:0;">%</span></div>
-                <div class="savings-sub">{tip} &nbsp;·&nbsp; {tn:,.0f}€ poupados no total</div>
-                <div style="background:rgba(255,255,255,0.15);border-radius:99px;height:4px;margin-top:16px;overflow:hidden;">
-                    <div style="width:{bw}%;height:4px;border-radius:99px;background:rgba(255,255,255,0.75);transition:width 0.6s ease;"></div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="savings-hero fade-up">'
+            + '<div class="savings-label">Taxa de Poupança Média</div>'
+            + '<div class="savings-big">' + f"{taxa:.1f}" + '<span style="font-size:0.4em;opacity:0.6;font-weight:500;letter-spacing:0;">%</span></div>'
+            + '<div class="savings-sub">' + tip + ' &nbsp;·&nbsp; ' + f"{tn:,.0f}" + '€ poupados no total</div>'
+            + '<div style="background:rgba(255,255,255,0.15);border-radius:99px;height:4px;margin-top:16px;overflow:hidden;">'
+            + '<div style="width:' + str(bw) + '%;height:4px;border-radius:99px;background:rgba(255,255,255,0.75);transition:width 0.6s ease;"></div>'
+            + '</div></div>',
+            unsafe_allow_html=True
+        )
 
         c1, c2, c3 = st.columns(3)
         c1.metric("Entradas",  f"{te:,.0f}€")
@@ -1099,26 +1099,27 @@ with tab2:
             total_s = cat_t.sum()
             if total_s > 0:
                 st.markdown('<div class="section-label" style="margin-top:20px;">Distribuição de Despesas</div>', unsafe_allow_html=True)
-                _catrows = []
+                cat_html = '<div class="card"><div class="card-body">'
                 for cat, val in cat_t.items():
                     color = CAT_COLORS.get(cat, "#6B7280")
                     icon  = CAT_ICONS.get(cat, "•")
                     pct   = val / total_s * 100
                     bw_c  = int(pct)
-                    _catrows.append(f"""
-                        <div class="cat-row">
-                            <div class="cat-dot" style="background:{color};"></div>
-                            <div class="cat-name">{icon} {cat}</div>
-                            <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
-                                <div style="width:80px;height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden;">
-                                    <div style="width:{bw_c}%;height:4px;background:{color};border-radius:2px;"></div>
-                                </div>
-                                <div class="cat-val">{val:,.0f}€</div>
-                                <div class="cat-pct">{pct:.0f}%</div>
-                            </div>
-                        </div>
-                    """)
-                st.markdown('<div class="card"><div class="card-body">' + "".join(_catrows) + '</div></div>', unsafe_allow_html=True)
+                    cat_html += (
+                        '<div class="cat-row">'
+                        + '<div class="cat-dot" style="background:' + color + ';"></div>'
+                        + '<div class="cat-name">' + icon + ' ' + cat + '</div>'
+                        + '<div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">'
+                        + '<div style="width:80px;height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden;">'
+                        + '<div style="width:' + str(bw_c) + '%;height:4px;background:' + color + ';border-radius:2px;"></div>'
+                        + '</div>'
+                        + '<div class="cat-val">' + f'{val:,.0f}' + '€</div>'
+                        + '<div class="cat-pct">' + f'{pct:.0f}' + '%</div>'
+                        + '</div>'
+                        + '</div>'
+                    )
+                cat_html += '</div></div>'
+                st.markdown(cat_html, unsafe_allow_html=True)
 
     else:
         st.markdown("""
@@ -1144,12 +1145,13 @@ with tab2:
         sobra   = sal - total_d
         taxa_p  = (sobra / sal * 100) if sal > 0 else 0
         tc2     = "#059669" if sobra >= 0 else "#DC2626"
-        st.markdown(f"""
-            <div class="total-preview" style="margin-top:12px;">
-                <span>Poupança do mês</span>
-                <strong style="color:{tc2};">{sobra:,.0f}€ <span style="font-size:0.7em;font-weight:600;opacity:0.7;">({taxa_p:.1f}%)</span></strong>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="total-preview" style="margin-top:12px;">'
+            + '<span>Poupança do mês</span>'
+            + '<strong style="color:' + tc2 + ';">' + f"{sobra:,.0f}" + '€ <span style="font-size:0.7em;font-weight:600;opacity:0.7;">(' + f"{taxa_p:.1f}" + '%)</span></strong>'
+            + '</div>',
+            unsafe_allow_html=True
+        )
         if st.button("Gravar Fluxo", key="btn_flx"):
             summary  = pd.DataFrame([{"Mês":mf,"Entradas":sal,"Saidas":total_d}])
             cat_rows = [{"Mês":mf,"Categoria":cat,"Saidas":val} for cat, val in cat_vals.items()]
@@ -1445,26 +1447,21 @@ with tab4:
 
             # Stock header card
             industry_chip = '<span class="chip chip-grey">' + industry[:24] + '</span>' if industry else ""
-            st.markdown(f"""
-                <div class="card fade-up">
-                    <div class="card-body">
-                        <div class="stock-header">
-                            <div style="flex:1;min-width:0;">
-                                <div class="stock-name">{name}</div>
-                                <div class="stock-meta">
-                                    <span class="stock-ticker">{use_ticker}</span>
-                                    <span class="chip chip-blue">{sector}</span>
-                                    {industry_chip}
-                                </div>
-                            </div>
-                            <div style="text-align:right;flex-shrink:0;">
-                                <div class="stock-price">{price:.2f}</div>
-                                <div class="stock-change" style="color:{dc};">{ds}{day_d:.2f} &nbsp; {ds}{day_p:.2f}%</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                '<div class="card fade-up"><div class="card-body"><div class="stock-header">'
+                + '<div style="flex:1;min-width:0;">'
+                + '<div class="stock-name">' + name + '</div>'
+                + '<div class="stock-meta">'
+                + '<span class="stock-ticker">' + use_ticker + '</span>'
+                + '<span class="chip chip-blue">' + sector + '</span>'
+                + industry_chip
+                + '</div></div>'
+                + '<div style="text-align:right;flex-shrink:0;">'
+                + '<div class="stock-price">' + f"{price:.2f}" + '</div>'
+                + '<div class="stock-change" style="color:' + dc + ';">' + ds + f"{day_d:.2f}" + ' &nbsp; ' + ds + f"{day_p:.2f}" + '%</div>'
+                + '</div></div></div></div>',
+                unsafe_allow_html=True
+            )
 
             # Run engines
             iv_res = intrinsic_value(info, sector)
@@ -1473,19 +1470,19 @@ with tab4:
             checks, score, n_ch, verdict, vc, vbg, vborder, vicon, vdesc = run_checklist(info, iv, price)
 
             # Verdict
-            st.markdown(f"""
-                <div class="verdict-wrap fade-up" style="background:{vbg};border:1.5px solid {vborder};">
-                    <div class="verdict-icon" style="background:{vc}20;color:{vc};">{vicon}</div>
-                    <div>
-                        <div class="verdict-title" style="color:{vc};">{verdict}</div>
-                        <div class="verdict-desc" style="color:{vc};">{vdesc}</div>
-                    </div>
-                    <div style="margin-left:auto;text-align:right;flex-shrink:0;">
-                        <div style="font-size:22px;font-weight:900;color:{vc};letter-spacing:-0.5px;">{score}<span style="font-size:0.55em;opacity:0.5;">/{n_ch}</span></div>
-                        <div style="font-size:10px;color:{vc};opacity:0.6;font-weight:600;letter-spacing:1px;">CRITÉRIOS</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                '<div class="verdict-wrap fade-up" style="background:' + vbg + ';border:1.5px solid ' + vborder + ';">'
+                + '<div class="verdict-icon" style="background:' + vc + '20;color:' + vc + ';">' + vicon + '</div>'
+                + '<div>'
+                + '<div class="verdict-title" style="color:' + vc + ';">' + verdict + '</div>'
+                + '<div class="verdict-desc" style="color:' + vc + ';">' + vdesc + '</div>'
+                + '</div>'
+                + '<div style="margin-left:auto;text-align:right;flex-shrink:0;">'
+                + '<div style="font-size:22px;font-weight:900;color:' + vc + ';letter-spacing:-0.5px;">' + str(score) + '<span style="font-size:0.55em;opacity:0.5;">/' + str(n_ch) + '</span></div>'
+                + '<div style="font-size:10px;color:' + vc + ';opacity:0.6;font-weight:600;letter-spacing:1px;">CRITÉRIOS</div>'
+                + '</div></div>',
+                unsafe_allow_html=True
+            )
 
             # Key metrics
             m1, m2, m3 = st.columns(3)
