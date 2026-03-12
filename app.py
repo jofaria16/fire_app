@@ -805,15 +805,22 @@ if not st.session_state.auth:
     n   = len(buf)
 
     # ── dots ──────────────────────────────────────────────────────────
-    dots = "".join([
-        f"""<div style="
-            width:13px;height:13px;border-radius:50%;
-            background:{'#EF4444' if err else '#0F172A' if i < n else 'transparent'};
-            border:2px solid {'#EF4444' if err else '#0F172A' if i < n else '#CBD5E1'};
-            transition:all 0.12s ease;
-        "></div>"""
-        for i in range(4)
-    ])
+    dot_parts = []
+    for i in range(4):
+        if err:
+            bg = "#EF4444"; bd = "#EF4444"
+        elif i < n:
+            bg = "#0F172A"; bd = "#0F172A"
+        else:
+            bg = "transparent"; bd = "#CBD5E1"
+        dot_parts.append(
+            '<div style="width:13px;height:13px;border-radius:50%;'
+            + 'background:' + bg + ';border:2px solid ' + bd + ';'
+            + 'transition:all 0.12s ease;"></div>'
+        )
+    dots = "".join(dot_parts)
+    err_msg_html = "PIN incorreto. Tenta novamente." if err else ""
+
 
     st.markdown(f"""
     <style>
@@ -872,7 +879,7 @@ if not st.session_state.auth:
       <div class="pin-logo">F<span>|</span>QUANT</div>
       <div class="pin-sub">Introduce o teu PIN para continuar</div>
       <div class="pin-dots">{dots}</div>
-      <div class="pin-err">{'PIN incorreto. Tenta novamente.' if err else ''}</div>
+      <div class="pin-err">{err_msg_html}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1180,18 +1187,20 @@ with tab2:
             else:
                 cc, ce, cd = st.columns([10, 1, 1])
                 with cc:
-                    st.markdown(f"""
-                        <div class="list-row">
-                            <div class="lr-left">
-                                <div class="lr-title">{r["Mês"]}</div>
-                                <div class="lr-sub">↑ {float(r["Entradas"]):,.0f}€ &nbsp;·&nbsp; ↓ {float(r["Saidas"]):,.0f}€ {'&nbsp;·&nbsp; '+cat_detail if cat_detail else ''}</div>
-                            </div>
-                            <div class="lr-right">
-                                <div class="lr-value" style="color:{nc};">{net:,.0f}€</div>
-                                <div class="lr-pct">{taxa:.1f}%</div>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    cat_suffix = "&nbsp;·&nbsp; " + cat_detail if cat_detail else ""
+                    st.markdown(
+                        '<div class="list-row">'
+                        + '<div class="lr-left">'
+                        + '<div class="lr-title">' + str(r["Mês"]) + '</div>'
+                        + '<div class="lr-sub">↑ ' + f'{float(r["Entradas"]):,.0f}' + '€ &nbsp;·&nbsp; ↓ ' + f'{float(r["Saidas"]):,.0f}' + '€' + cat_suffix + '</div>'
+                        + '</div>'
+                        + '<div class="lr-right">'
+                        + '<div class="lr-value" style="color:' + nc + ';">' + f'{net:,.0f}' + '€</div>'
+                        + '<div class="lr-pct">' + f'{taxa:.1f}' + '%</div>'
+                        + '</div>'
+                        + '</div>',
+                        unsafe_allow_html=True
+                    )
                 with ce:
                     if st.button("✏️", key=f"fe_{i}"):
                         st.session_state.edit_flx = i; st.rerun()
@@ -1434,6 +1443,7 @@ with tab4:
             dc       = "#059669" if day_d >= 0 else "#DC2626"
 
             # Stock header card
+            industry_chip = '<span class="chip chip-grey">' + industry[:24] + '</span>' if industry else ""
             st.markdown(f"""
                 <div class="card fade-up">
                     <div class="card-body">
@@ -1443,7 +1453,7 @@ with tab4:
                                 <div class="stock-meta">
                                     <span class="stock-ticker">{use_ticker}</span>
                                     <span class="chip chip-blue">{sector}</span>
-                                    {'<span class="chip chip-grey">'+industry[:24]+'</span>' if industry else ''}
+                                    {industry_chip}
                                 </div>
                             </div>
                             <div style="text-align:right;flex-shrink:0;">
@@ -1491,12 +1501,13 @@ with tab4:
                 if not cc_items: continue
                 cs = sum(1 for _, p, _ in cc_items if p); ct = len(cc_items)
                 cc_col = "#059669" if cs==ct else "#D97706" if cs>0 else "#DC2626"
+                chip_cls = "chip chip-green" if cs == ct else "chip chip-yellow" if cs > 0 else "chip chip-red"
                 html = f"""
                     <div class="card" style="margin-bottom:8px;">
                         <div class="card-body-sm">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                                 <span style="font-size:11px;font-weight:700;color:#374151;letter-spacing:1px;">{cat.upper()}</span>
-                                <span class="chip {'chip-green' if cs==ct else 'chip-yellow' if cs>0 else 'chip-red'}">{cs}/{ct}</span>
+                                <span class="{chip_cls}">{cs}/{ct}</span>
                             </div>
                 """
                 for label, passed, val in cc_items:
