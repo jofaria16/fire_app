@@ -1426,14 +1426,19 @@ with tab3:
 
                 col_info, col_btn = st.columns([5, 1])
                 with col_info:
+                    # Guard against NaN values from CSV
+                    nome_s   = str(nome)   if nome   and str(nome)   != "nan" else ""
+                    series_s = str(series) if series and str(series) != "nan" else ""
+                    desc_s   = str(desc)   if desc   and str(desc)   != "nan" else ""
+
                     opacity     = "0.35" if done_ex else "1"
                     name_style  = "text-decoration:line-through;color:#94A3B8;" if done_ex else "font-weight:600;color:#0F172A;"
                     badge_style = "background:#F1F5F9;color:#94A3B8;" if done_ex else "background:" + cor + "18;color:" + cor + ";"
-                    desc_block  = '<div style="font-size:11px;color:#94A3B8;margin-top:2px;">' + desc + '</div>' if desc else ""
+                    desc_block  = '<div style="font-size:11px;color:#94A3B8;margin-top:2px;">' + desc_s + '</div>' if desc_s else ""
                     row_html = (
                         '<div style="padding:10px 0 10px 4px;opacity:' + opacity + ';transition:opacity 0.2s;">'
-                        + '<div style="font-size:14px;' + name_style + '">' + nome + '</div>'
-                        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;' + badge_style + '">' + series + '</span>'
+                        + '<div style="font-size:14px;' + name_style + '">' + nome_s + '</div>'
+                        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;' + badge_style + '">' + series_s + '</span>'
                         + desc_block
                         + '</div>'
                     )
@@ -1645,5 +1650,7 @@ with tab4:
 st.markdown("""
     <div style="text-align:center;padding:28px 0 20px;font-size:11px;color:#CBD5E1;letter-spacing:0.5px;">
         F|QUANT &nbsp;·&nbsp; Personal Edition
+    </div>
+""", unsafe_allow_html=True)
     </div>
 """, unsafe_allow_html=True)
