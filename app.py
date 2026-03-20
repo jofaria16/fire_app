@@ -1219,15 +1219,57 @@ with tab2:
                     cat_detail = " · ".join(parts[:3])
 
             if st.session_state.edit_flx == i:
-                st.markdown('<div class="edit-bar">✏ A editar registo</div>', unsafe_allow_html=True)
-                fe1, fe2 = st.columns(2)
-                ne = fe1.number_input("Entradas", value=float(r["Entradas"]), format="%.2f", key=f"fei_{i}")
-                ns = fe2.number_input("Saídas",   value=float(r["Saidas"]),   format="%.2f", key=f"fes_{i}")
+                st.markdown('<div class="edit-bar">✏ A editar — ' + str(r["Mês"]) + '</div>', unsafe_allow_html=True)
+
+                # Entradas
+                ne = st.number_input("Salário / Entradas (€)", value=float(r["Entradas"]), format="%.2f", key=f"fei_{i}")
+
+                # Load existing category values for this month
+                mes_desp = {}
+                if not df_desp.empty and "Categoria" in df_desp.columns:
+                    mc = df_desp[(df_desp["Mês"] == r["Mês"]) & (df_desp["Categoria"] != "_total_")]
+                    for _, cr in mc.iterrows():
+                        mes_desp[cr["Categoria"]] = float(cr["Saidas"])
+
+                st.markdown('<div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:1.2px;text-transform:uppercase;margin:14px 0 8px;">Despesas por categoria</div>', unsafe_allow_html=True)
+                new_cat_vals = {}
+                c1e, c2e = st.columns(2)
+                for idx_c, cat in enumerate(DESPESA_CATS):
+                    col = c1e if idx_c % 2 == 0 else c2e
+                    cur_val = mes_desp.get(cat, 0.0)
+                    new_cat_vals[cat] = col.number_input(
+                        f"{CAT_ICONS.get(cat,'')} {cat}",
+                        value=cur_val, min_value=0.0, format="%.2f",
+                        key=f"fec_{i}_{cat}"
+                    )
+
+                total_d_e = sum(new_cat_vals.values())
+                sobra_e   = ne - total_d_e
+                tc_e      = "#059669" if sobra_e >= 0 else "#DC2626"
+                st.markdown(
+                    '<div class="total-preview" style="margin-top:8px;">'
+                    + '<span>Poupança do mês</span>'
+                    + '<strong style="color:' + tc_e + ';">' + f"{sobra_e:,.0f}" + '€</strong>'
+                    + '</div>',
+                    unsafe_allow_html=True
+                )
+
                 fb1, fb2 = st.columns(2)
                 with fb1:
                     if st.button("✓ Guardar", key=f"fsv_{i}", type="primary"):
-                        df_f.at[i,"Entradas"] = ne; df_f.at[i,"Saidas"] = ns
-                        save_db(df_f, "poupanca"); st.session_state.edit_flx = None; st.rerun()
+                        # Update poupanca summary
+                        df_f.at[i, "Entradas"] = ne
+                        df_f.at[i, "Saidas"]   = total_d_e
+                        save_db(df_f, "poupanca")
+                        # Remove old category rows for this month and replace
+                        mes_val = r["Mês"]
+                        df_desp_clean = df_desp[df_desp["Mês"] != mes_val].copy() if not df_desp.empty else pd.DataFrame()
+                        new_cat_rows  = pd.DataFrame([{"Mês": mes_val, "Categoria": cat, "Saidas": val}
+                                                       for cat, val in new_cat_vals.items()])
+                        df_desp_new   = pd.concat([df_desp_clean, new_cat_rows], ignore_index=True)
+                        save_db(df_desp_new, "despesas")
+                        st.session_state.edit_flx = None
+                        st.rerun()
                 with fb2:
                     if st.button("Cancelar", key=f"fca_{i}"):
                         st.session_state.edit_flx = None; st.rerun()
@@ -1253,7 +1295,13 @@ with tab2:
                         st.session_state.edit_flx = i; st.rerun()
                 with cd:
                     if st.button("🗑", key=f"fd_{i}"):
-                        save_db(df_f.drop(i).reset_index(drop=True), "poupanca"); st.rerun()
+                        mes_apagar = r["Mês"]
+                        # Remove from poupanca
+                        save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
+                        # Remove all category rows for this month from despesas
+                        if not df_desp.empty and "Mês" in df_desp.columns:
+                            save_db(df_desp[df_desp["Mês"] != mes_apagar].reset_index(drop=True), "despesas")
+                        st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════
