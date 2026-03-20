@@ -2,6 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components  # noqa: F401 — used for PIN keypad
 import pandas as pd
 import os
+import io
+import base64
+import requests
 from datetime import datetime
 import yfinance as yf
 import numpy as np
@@ -560,10 +563,12 @@ label[data-testid="stWidgetLabel"] p {
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════
-# DATABASE LAYER
+# DATABASE LAYER — GitHub as persistent storage
 # ══════════════════════════════════════════════════════════════════════
+GITHUB_REPO  = st.secrets.get("GITHUB_REPO",  "jofaria16/fire_app")
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+GITHUB_BRANCH = "main"
 DATA_DIR = "dados"
-os.makedirs(DATA_DIR, exist_ok=True)
 
 PT_MONTHS = {"Jan":1,"Fev":2,"Mar":3,"Abr":4,"Mai":5,"Jun":6,
              "Jul":7,"Ago":8,"Set":9,"Out":10,"Nov":11,"Dez":12}
@@ -575,7 +580,40 @@ def parse_mes(m):
     except:
         return 0
 
+def _gh_headers():
+    return {
+        "Authorization": "token " + GITHUB_TOKEN,
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+def _gh_path(name):
+    return f"{DATA_DIR}/{name}.csv"
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_db(name):
+    """Load CSV from GitHub repo."""
+    if not GITHUB_TOKEN:
+        return pd.DataFrame()
+    url  = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{_gh_path(name)}"
+    resp = requests.get(url, headers=_gh_headers(), timeout=10)
+    if resp.status_code != 200:
+        return pd.DataFrame()
+    content = base64.b64decode(resp.json()["content"]).decode("utf-8")
+    df = pd.read_csv(io.StringIO(content))
+    if df.empty or "Mês" not in df.columns:
+        return df.reset_index(drop=True)
+    try:
+        df["_s"] = df["Mês"].apply(parse_mes)
+        df = df.sort_values("_s", ascending=False).drop(columns=["_s"])
+    except:
+        pass
+    return df.reset_index(drop=True)
+
 def save_db(df, name):
+    """Save CSV to GitHub repo (creates or updates file)."""
+    if not GITHUB_TOKEN:
+        return
+    # Sort by month if applicable
     if "Mês" in df.columns and not df.empty:
         try:
             df = df.copy()
@@ -583,21 +621,27 @@ def save_db(df, name):
             df = df.sort_values("_s", ascending=False).drop(columns=["_s"])
         except:
             pass
-    df.to_csv(f"{DATA_DIR}/{name}.csv", index=False)
+    csv_content = df.to_csv(index=False)
+    encoded     = base64.b64encode(csv_content.encode("utf-8")).decode("utf-8")
+    url         = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{_gh_path(name)}"
 
-def load_db(name):
-    path = f"{DATA_DIR}/{name}.csv"
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    df = pd.read_csv(path)
-    if df.empty or "Mês" not in df.columns:
-        return df
-    try:
-        df["_s"] = df["Mês"].apply(parse_mes)
-        df = df.sort_values("_s", ascending=False).drop(columns=["_s"])
-    except:
-        pass
-    return df.reset_index(drop=True)
+    # Get current SHA (needed to update existing file)
+    sha = None
+    resp = requests.get(url, headers=_gh_headers(), timeout=10)
+    if resp.status_code == 200:
+        sha = resp.json().get("sha")
+
+    payload = {
+        "message": f"update {name}",
+        "content": encoded,
+        "branch":  GITHUB_BRANCH,
+    }
+    if sha:
+        payload["sha"] = sha
+
+    requests.put(url, headers=_gh_headers(), json=payload, timeout=15)
+    # Clear cache so next load_db reads fresh data
+    load_db.clear()
 
 def get_months():
     n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -1011,7 +1055,7 @@ with tab1:
         if st.button("Gravar Património", key="btn_pat"):
             row = pd.DataFrame([{"Mês":m,"T212":v1,"IBKR":v2,"CRY":v3,"PPR":v4,"Total":tot_inp}])
             save_db(pd.concat([df_p, row], ignore_index=True), "patrimonio")
-            st.cache_data.clear(); st.rerun()
+            st.rerun()
 
     # ── History ───────────────────────────────────────────────────────
     if not df_p.empty:
@@ -1157,7 +1201,7 @@ with tab2:
             cat_rows = [{"Mês":mf,"Categoria":cat,"Saidas":val} for cat, val in cat_vals.items()]
             save_db(pd.concat([df_f, summary], ignore_index=True), "poupanca")
             save_db(pd.concat([df_desp, pd.DataFrame(cat_rows)], ignore_index=True), "despesas")
-            st.cache_data.clear(); st.rerun()
+            st.rerun()
 
     # ── History ───────────────────────────────────────────────────────
     if not df_f.empty:
