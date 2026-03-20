@@ -648,9 +648,9 @@ def get_months():
     y = datetime.now().year % 100
     return [f"{m} {y}" for m in reversed(n)] + [f"{m} {y-1}" for m in reversed(n)]
 
-DESPESA_CATS  = ["Habitação","Alimentação","Transportes","Saúde","Lazer","Subscrições","Educação","Outros"]
-CAT_ICONS     = {"Habitação":"🏠","Alimentação":"🍽","Transportes":"🚗","Saúde":"💊","Lazer":"🎮","Subscrições":"📱","Educação":"📚","Outros":"📦"}
-CAT_COLORS    = {"Habitação":"#2563EB","Alimentação":"#059669","Transportes":"#D97706","Saúde":"#EC4899","Lazer":"#7C3AED","Subscrições":"#0891B2","Educação":"#16A34A","Outros":"#6B7280"}
+DESPESA_CATS  = ["Habitação","Alimentação","Transportes","Saúde","Lazer","Subscrições","Educação","Seguros","Animais","Outros"]
+CAT_ICONS     = {"Habitação":"🏠","Alimentação":"🍽","Transportes":"🚗","Saúde":"💊","Lazer":"🎮","Subscrições":"📱","Educação":"📚","Seguros":"🛡️","Animais":"🐾","Outros":"📦"}
+CAT_COLORS    = {"Habitação":"#2563EB","Alimentação":"#059669","Transportes":"#D97706","Saúde":"#EC4899","Lazer":"#7C3AED","Subscrições":"#0891B2","Educação":"#16A34A","Seguros":"#0F766E","Animais":"#92400E","Outros":"#6B7280"}
 
 # ══════════════════════════════════════════════════════════════════════
 # SESSION STATE
@@ -1258,62 +1258,66 @@ with tab2:
 
 # ══════════════════════════════════════════════════════════════════════
 # ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 # ▌TAB 3 — PLANO TREINO
 # ══════════════════════════════════════════════════════════════════════
 with tab3:
-    treino_path = f"{DATA_DIR}/treino_custom.csv"
+    # ── Load custom plan ──────────────────────────────────────────────
     custom_plan = {}
-    if os.path.exists(treino_path):
-        try:
-            df_tc = pd.read_csv(treino_path)
-            for dia in TREINO:
-                rows_dia = df_tc[df_tc["dia"] == dia]
-                if not rows_dia.empty:
-                    custom_plan[dia] = [(r["nome"], r["series"], r["desc"]) for _, r in rows_dia.iterrows()]
-        except: pass
+    df_tc = load_db("treino_custom")
+    if not df_tc.empty and "dia" in df_tc.columns:
+        for dia in TREINO:
+            rows_dia = df_tc[df_tc["dia"] == dia]
+            if not rows_dia.empty:
+                custom_plan[dia] = [
+                    (str(r["nome"]) if str(r["nome"]) != "nan" else "",
+                     str(r["series"]) if str(r["series"]) != "nan" else "",
+                     str(r["desc"]) if str(r["desc"]) != "nan" else "")
+                    for _, r in rows_dia.iterrows()
+                ]
+
+    # ── Load extra activities ──────────────────────────────────────────
+    df_extra = load_db("treino_extra")
 
     # ── Week selector ─────────────────────────────────────────────────
-    current_iso = datetime.now().isocalendar()[1]
+    current_iso  = datetime.now().isocalendar()[1]
     current_year = datetime.now().year
-
-    # Build list of last 10 weeks (most recent first)
     week_options = []
     for delta in range(10):
         wn = current_iso - delta
         yr = current_year
         if wn <= 0:
-            wn += 52
-            yr -= 1
+            wn += 52; yr -= 1
         label = "Semana " + str(wn) + (" (atual)" if delta == 0 else "")
         week_options.append((label, wn))
-
     week_labels = [w[0] for w in week_options]
     week_nums   = [w[1] for w in week_options]
-
-    # Find index of currently selected week
-    sel_wn = st.session_state.selected_week
+    sel_wn  = st.session_state.selected_week
     sel_idx = week_nums.index(sel_wn) if sel_wn in week_nums else 0
-
-    sel_label = st.selectbox(
-        "Semana",
-        options=week_labels,
-        index=sel_idx,
-        key="week_selector",
-        label_visibility="collapsed",
-    )
+    sel_label  = st.selectbox("Semana", options=week_labels, index=sel_idx,
+                               key="week_selector", label_visibility="collapsed")
     chosen_wn  = week_nums[week_labels.index(sel_label)]
     chosen_key = "w" + str(chosen_wn)
-
-    # Persist selection and init state for chosen week
     if st.session_state.selected_week != chosen_wn:
         st.session_state.selected_week = chosen_wn
         st.session_state.treino_edit   = False
         st.rerun()
-
     if chosen_key not in st.session_state:
-        st.session_state[chosen_key] = {}
+        df_ck = load_db("treino_checks_" + str(chosen_wn))
+        if not df_ck.empty and "ck" in df_ck.columns:
+            st.session_state[chosen_key] = {
+                str(r["ck"]): bool(r["val"]) for _, r in df_ck.iterrows()
+            }
+        else:
+            st.session_state[chosen_key] = {}
 
-    # ── Weekly progress card ───────────────────────────────────────────
+    def save_checks():
+        ck_data = st.session_state[chosen_key]
+        rows = [{"ck": k, "val": int(v)} for k, v in ck_data.items()]
+        save_db(pd.DataFrame(rows) if rows else pd.DataFrame(columns=["ck","val"]),
+                "treino_checks_" + str(chosen_wn))
+
+    # ── Weekly progress ────────────────────────────────────────────────
     total_ex   = sum(len(custom_plan.get(d, TREINO[d]["ex"])) for d in TREINO)
     total_done = sum(
         1 for d in TREINO
@@ -1322,25 +1326,19 @@ with tab3:
     )
     wpct = int(total_done / total_ex * 100) if total_ex > 0 else 0
     wc   = "#059669" if wpct == 100 else "#2563EB" if wpct > 0 else "#CBD5E1"
-    wlbl = "✓ Semana completa!" if wpct == 100 else str(total_done) + " de " + str(total_ex) + " exercícios"
-
+    wlbl = "Semana completa!" if wpct == 100 else str(total_done) + " de " + str(total_ex) + " exercicios"
+    atual_badge = '&nbsp;<span style="font-size:11px;font-weight:600;color:#2563EB;background:#EFF6FF;padding:2px 8px;border-radius:20px;">atual</span>' if chosen_wn == current_iso else ""
     card_html = (
-        '<div class="card" style="margin-bottom:14px;">'
-        + '<div class="card-body">'
+        '<div class="card" style="margin-bottom:14px;"><div class="card-body">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-        + '<div>'
-        + '<div style="font-size:16px;font-weight:800;color:#0F172A;">Semana ' + str(chosen_wn) + ('&nbsp;<span style="font-size:11px;font-weight:600;color:#2563EB;background:#EFF6FF;padding:2px 8px;border-radius:20px;">atual</span>' if chosen_wn == current_iso else '') + '</div>'
-        + '<div style="font-size:12px;color:#94A3B8;margin-top:2px;">3× semana &nbsp;·&nbsp; Seg · Qua · Sex</div>'
-        + '</div>'
+        + '<div><div style="font-size:16px;font-weight:800;color:#0F172A;">Semana ' + str(chosen_wn) + atual_badge + '</div>'
+        + '<div style="font-size:12px;color:#94A3B8;margin-top:2px;">3x semana &nbsp;.&nbsp; Seg . Qua . Sex</div></div>'
         + '<div style="font-size:28px;font-weight:900;color:' + wc + ';letter-spacing:-1px;">' + str(wpct) + '<span style="font-size:0.5em;opacity:0.6;font-weight:500;">%</span></div>'
         + '</div>'
-        + '<div class="prog-track">'
-        + '<div class="prog-fill" style="width:' + str(wpct) + '%;background:' + wc + ';"></div>'
-        + '</div>'
+        + '<div class="prog-track"><div class="prog-fill" style="width:' + str(wpct) + '%;background:' + wc + ';"></div></div>'
         + '<div style="font-size:11px;color:#94A3B8;margin-top:6px;">' + wlbl + '</div>'
         + '</div></div>'
     )
-
     ch, ce = st.columns([9, 1])
     with ch:
         st.markdown(card_html, unsafe_allow_html=True)
@@ -1350,115 +1348,164 @@ with tab3:
             st.session_state.treino_edit = not st.session_state.treino_edit
             st.rerun()
 
-    # ── Edit mode ─────────────────────────────────────────────────────
-    if st.session_state.treino_edit:
-        st.markdown('<div class="edit-bar">✏ Modo edição — altera nome, séries ou notas</div>', unsafe_allow_html=True)
-        edited = {}
-        for dia, dados in TREINO.items():
-            exs = custom_plan.get(dia, dados["ex"])
-            st.markdown(
-                '<div style="font-size:13px;font-weight:800;color:' + dados["cor"] + ';margin:16px 0 8px;">'
-                + dia + ' — ' + dados["sub"] + '</div>',
-                unsafe_allow_html=True
-            )
-            edited[dia] = []
-            for idx, (nome, series, desc) in enumerate(exs):
-                c1, c2, c3 = st.columns([3, 2, 4])
-                n = c1.text_input("", value=nome,   key="tn_" + dia + "_" + str(idx), placeholder="Nome")
-                s = c2.text_input("", value=series, key="ts_" + dia + "_" + str(idx), placeholder="Séries")
-                d = c3.text_input("", value=desc,   key="td_" + dia + "_" + str(idx), placeholder="Notas")
-                edited[dia].append((n, s, d))
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            if st.button("✓ Guardar Plano", key="save_treino", type="primary"):
-                save_rows = [{"dia": dia, "nome": n, "series": s, "desc": d}
-                             for dia, exs in edited.items() for n, s, d in exs]
-                pd.DataFrame(save_rows).to_csv(treino_path, index=False)
-                st.session_state.treino_edit = False
-                st.rerun()
-        with sc2:
-            if st.button("Cancelar", key="cancel_treino"):
-                st.session_state.treino_edit = False
-                st.rerun()
+    sub_plano, sub_extra = st.tabs(["Plano de Treino", "Actividade Extra"])
 
-    else:
-        # ── Display mode ──────────────────────────────────────────────
-        for dia, dados in TREINO.items():
-            exs   = custom_plan.get(dia, dados["ex"])
-            cor   = dados["cor"]
-            done  = sum(1 for idx in range(len(exs)) if st.session_state[chosen_key].get(dia + "_" + str(idx), False))
-            total = len(exs)
-            pct   = int(done / total * 100) if total > 0 else 0
-            bc    = "#059669" if pct == 100 else cor if pct > 0 else "#CBD5E1"
+    # ── SUB-TAB 1: PLANO ──────────────────────────────────────────────
+    with sub_plano:
+        if st.session_state.treino_edit:
+            st.markdown('<div class="edit-bar">✏ Modo edicao - altera nome, series ou notas</div>', unsafe_allow_html=True)
+            edited = {}
+            for dia, dados in TREINO.items():
+                exs = custom_plan.get(dia, dados["ex"])
+                st.markdown(
+                    '<div style="font-size:13px;font-weight:800;color:' + dados["cor"] + ';margin:16px 0 8px;">'
+                    + dia + ' - ' + dados["sub"] + '</div>',
+                    unsafe_allow_html=True
+                )
+                edited[dia] = []
+                for idx, (nome, series, desc) in enumerate(exs):
+                    c1, c2, c3 = st.columns([3, 2, 4])
+                    n = c1.text_input("", value=nome,   key="tn_" + dia + "_" + str(idx), placeholder="Nome")
+                    s = c2.text_input("", value=series, key="ts_" + dia + "_" + str(idx), placeholder="Series")
+                    d = c3.text_input("", value=desc,   key="td_" + dia + "_" + str(idx), placeholder="Notas")
+                    edited[dia].append((n, s, d))
+            sc1, sc2 = st.columns(2)
+            with sc1:
+                if st.button("Guardar Plano", key="save_treino", type="primary"):
+                    save_rows = [{"dia": dia, "nome": n, "series": s, "desc": d}
+                                 for dia, exs in edited.items() for n, s, d in exs]
+                    save_db(pd.DataFrame(save_rows), "treino_custom")
+                    st.session_state.treino_edit = False
+                    st.rerun()
+            with sc2:
+                if st.button("Cancelar", key="cancel_treino"):
+                    st.session_state.treino_edit = False
+                    st.rerun()
 
-            badge_bg  = "#ECFDF5" if pct == 100 else cor + "22" if pct > 0 else "#F8FAFC"
-            badge_txt = "#059669" if pct == 100 else cor         if pct > 0 else "#94A3B8"
-            badge_lbl = "✓ Completo" if pct == 100 else str(done) + "/" + str(total)
-
-            if dados["warmup"]:
-                wu_joined   = " · ".join(dados["warmup"])
-                warmup_html = '<div class="warmup-strip" style="margin:0 18px 8px;"><strong>Aquecimento &nbsp;</strong>' + wu_joined + '</div>'
-            else:
+        else:
+            for dia, dados in TREINO.items():
+                exs   = custom_plan.get(dia, dados["ex"])
+                cor   = dados["cor"]
+                done  = sum(1 for idx in range(len(exs)) if st.session_state[chosen_key].get(dia + "_" + str(idx), False))
+                total = len(exs)
+                pct   = int(done / total * 100) if total > 0 else 0
+                bc    = "#059669" if pct == 100 else cor if pct > 0 else "#CBD5E1"
+                badge_bg  = "#ECFDF5" if pct == 100 else cor + "22" if pct > 0 else "#F8FAFC"
+                badge_txt = "#059669" if pct == 100 else cor         if pct > 0 else "#94A3B8"
+                badge_lbl = "Completo" if pct == 100 else str(done) + "/" + str(total)
                 warmup_html = ""
+                if dados["warmup"]:
+                    wu_joined   = " . ".join(dados["warmup"])
+                    warmup_html = '<div class="warmup-strip" style="margin:0 18px 8px;"><strong>Aquecimento &nbsp;</strong>' + wu_joined + '</div>'
+                day_html = (
+                    '<div class="day-card" style="border-top:3px solid ' + cor + ';margin-bottom:4px;">'
+                    + '<div class="day-header">'
+                    + '<div><div class="day-title">' + dia + '</div>'
+                    + '<div class="day-sub">' + dados["sub"] + '</div></div>'
+                    + '<div class="day-badge" style="background:' + badge_bg + ';color:' + badge_txt + ';">' + badge_lbl + '</div>'
+                    + '</div>'
+                    + '<div style="padding:0 18px 8px;">'
+                    + '<div class="prog-track"><div class="prog-fill" style="width:' + str(pct) + '%;background:' + bc + ';"></div></div>'
+                    + '</div>' + warmup_html + '</div>'
+                )
+                st.markdown(day_html, unsafe_allow_html=True)
 
-            day_html = (
-                '<div class="day-card" style="border-top:3px solid ' + cor + '; margin-bottom:4px;">'
-                + '<div class="day-header">'
-                + '<div>'
-                + '<div class="day-title">' + dia + '</div>'
-                + '<div class="day-sub">' + dados["sub"] + '</div>'
-                + '</div>'
-                + '<div class="day-badge" style="background:' + badge_bg + ';color:' + badge_txt + ';">' + badge_lbl + '</div>'
-                + '</div>'
-                + '<div style="padding:0 18px 8px;">'
-                + '<div class="prog-track">'
-                + '<div class="prog-fill" style="width:' + str(pct) + '%;background:' + bc + ';"></div>'
-                + '</div></div>'
-                + warmup_html
-                + '</div>'
-            )
-            st.markdown(day_html, unsafe_allow_html=True)
-
-            for idx, (nome, series, desc) in enumerate(exs):
-                ck      = dia + "_" + str(idx)
-                done_ex = st.session_state[chosen_key].get(ck, False)
-
-                col_info, col_btn = st.columns([5, 1])
-                with col_info:
-                    # Guard against NaN values from CSV
+                for idx, (nome, series, desc) in enumerate(exs):
+                    ck      = dia + "_" + str(idx)
+                    done_ex = st.session_state[chosen_key].get(ck, False)
                     nome_s   = str(nome)   if nome   and str(nome)   != "nan" else ""
                     series_s = str(series) if series and str(series) != "nan" else ""
                     desc_s   = str(desc)   if desc   and str(desc)   != "nan" else ""
-
                     opacity     = "0.35" if done_ex else "1"
                     name_style  = "text-decoration:line-through;color:#94A3B8;" if done_ex else "font-weight:600;color:#0F172A;"
                     badge_style = "background:#F1F5F9;color:#94A3B8;" if done_ex else "background:" + cor + "18;color:" + cor + ";"
                     desc_block  = '<div style="font-size:11px;color:#94A3B8;margin-top:2px;">' + desc_s + '</div>' if desc_s else ""
-                    row_html = (
-                        '<div style="padding:10px 0 10px 4px;opacity:' + opacity + ';transition:opacity 0.2s;">'
-                        + '<div style="font-size:14px;' + name_style + '">' + nome_s + '</div>'
-                        + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;' + badge_style + '">' + series_s + '</span>'
-                        + desc_block
-                        + '</div>'
+
+                    col_btn, col_info = st.columns([1, 5])
+                    with col_btn:
+                        btn_label = "✓" if done_ex else "○"
+                        if st.button(btn_label, key="ck_" + ck + "_" + chosen_key):
+                            st.session_state[chosen_key][ck] = not done_ex
+                            save_checks()
+                            st.rerun()
+                    with col_info:
+                        st.markdown(
+                            '<div style="padding:10px 0 6px;opacity:' + opacity + ';transition:opacity 0.2s;">'
+                            + '<div style="font-size:14px;' + name_style + '">' + nome_s + '</div>'
+                            + '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;' + badge_style + '">' + series_s + '</span>'
+                            + desc_block + '</div>',
+                            unsafe_allow_html=True
+                        )
+
+                if dados["nota"]:
+                    st.markdown('<div class="note-strip" style="margin:4px 0 16px;">' + dados["nota"] + '</div>', unsafe_allow_html=True)
+                st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            if st.button("Reiniciar Semana " + str(chosen_wn), key="reset_week"):
+                st.session_state[chosen_key] = {}
+                save_checks()
+                st.rerun()
+
+    # ── SUB-TAB 2: ACTIVIDADE EXTRA ───────────────────────────────────
+    with sub_extra:
+        EXTRA_TIPOS = ["🏃 Corrida","🚴 Bike","⚽ Futebol","🏊 Natacao","🧘 Yoga / Mobilidade",
+                       "🥊 Artes Marciais","🏋️ Ginasio Extra","🚶 Caminhada","🎾 Tenis / Padel",
+                       "🏔️ Outdoor / Trekking","Outro"]
+
+        st.markdown('<div class="section-label">Registar Actividade</div>', unsafe_allow_html=True)
+        with st.expander("+ Nova actividade"):
+            ea, eb = st.columns(2)
+            ex_data = ea.date_input("Data", value=datetime.now().date(), key="ex_data")
+            ex_tipo = eb.selectbox("Tipo", EXTRA_TIPOS, key="ex_tipo")
+            ec, ed  = st.columns(2)
+            ex_dur  = ec.number_input("Duracao (min)", min_value=0, step=5, key="ex_dur")
+            ex_nota = ed.text_input("Nota (opcional)", key="ex_nota", placeholder="ex: 5km, zona 2...")
+            if st.button("Gravar Actividade", key="btn_extra"):
+                new_row = pd.DataFrame([{"data": str(ex_data), "tipo": ex_tipo,
+                                          "dur": ex_dur, "nota": ex_nota, "semana": chosen_wn}])
+                df_extra_upd = pd.concat([df_extra, new_row], ignore_index=True) if not df_extra.empty else new_row
+                save_db(df_extra_upd, "treino_extra")
+                st.rerun()
+
+        if not df_extra.empty and "semana" in df_extra.columns:
+            df_week_extra = df_extra[df_extra["semana"] == chosen_wn].reset_index(drop=True)
+        else:
+            df_week_extra = pd.DataFrame()
+
+        if not df_week_extra.empty:
+            st.markdown('<div class="section-label" style="margin-top:8px;">Esta Semana</div>', unsafe_allow_html=True)
+            for i, r in df_week_extra.iterrows():
+                dur_s  = str(int(float(r["dur"]))) + " min" if str(r["dur"]) not in ["nan","0","0.0"] else ""
+                nota_s = str(r["nota"]) if str(r["nota"]) not in ["nan",""] else ""
+                sub_s  = str(r["data"]) + (" &nbsp;·&nbsp; " + dur_s if dur_s else "") + (" &nbsp;·&nbsp; " + nota_s if nota_s else "")
+                rc, rd = st.columns([11, 1])
+                with rc:
+                    st.markdown(
+                        '<div class="list-row">'
+                        + '<div class="lr-left">'
+                        + '<div class="lr-title">' + str(r["tipo"]) + '</div>'
+                        + '<div class="lr-sub">' + sub_s + '</div>'
+                        + '</div></div>',
+                        unsafe_allow_html=True
                     )
-                    st.markdown(row_html, unsafe_allow_html=True)
-
-                with col_btn:
-                    btn_label = "✓" if done_ex else "○"
-                    if st.button(btn_label, key="ck_" + ck + "_" + chosen_key):
-                        st.session_state[chosen_key][ck] = not done_ex
+                with rd:
+                    if st.button("🗑", key="del_extra_" + str(i)):
+                        full_idx = df_extra[
+                            (df_extra["semana"] == chosen_wn) &
+                            (df_extra["tipo"]   == r["tipo"]) &
+                            (df_extra["data"]   == r["data"])
+                        ].index
+                        save_db(df_extra.drop(full_idx).reset_index(drop=True), "treino_extra")
                         st.rerun()
+        else:
+            st.markdown(
+                '<div class="empty-state"><div class="icon">🏃</div>'
+                + '<div class="title">Sem actividades esta semana</div>'
+                + '<div class="sub">Regista uma corrida, bike ou jogo acima</div></div>',
+                unsafe_allow_html=True
+            )
 
-            if dados["nota"]:
-                st.markdown('<div class="note-strip" style="margin:4px 0 16px;">' + dados["nota"] + '</div>', unsafe_allow_html=True)
-
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        if st.button("↺ Reiniciar Semana " + str(chosen_wn), key="reset_week"):
-            st.session_state[chosen_key] = {}
-            st.rerun()
 
 # ▌TAB 4 — ANÁLISE DE AÇÕES
 # ══════════════════════════════════════════════════════════════════════
