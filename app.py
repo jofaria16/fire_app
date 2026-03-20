@@ -1652,5 +1652,3 @@ st.markdown("""
         F|QUANT &nbsp;·&nbsp; Personal Edition
     </div>
 """, unsafe_allow_html=True)
-    </div>
-""", unsafe_allow_html=True)
