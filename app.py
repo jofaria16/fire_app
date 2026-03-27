@@ -1080,24 +1080,24 @@ with tab1:
                         st.session_state.edit_pat = None; st.rerun()
             else:
                 sub = f'T212 {float(r.get("T212",0) or 0):,.0f} · IBKR {float(r.get("IBKR",0) or 0):,.0f} · Crypto {float(r.get("CRY",0) or 0):,.0f} · PPR {float(r.get("PPR",0) or 0):,.0f}'
-                cc, ce, cd = st.columns([10, 1, 1])
-                with cc:
-                    st.markdown(
-                        '<div class="list-row">'
-                        + '<div class="lr-left">'
-                        + '<div class="lr-title">' + str(r["Mês"]) + '</div>'
-                        + '<div class="lr-sub">' + sub + '</div>'
-                        + '</div>'
-                        + '<div class="lr-right">'
-                        + '<div class="lr-value">' + f'{float(r["Total"]):,.0f}' + '€</div>'
-                        + '</div>'
-                        + '</div>',
-                        unsafe_allow_html=True
-                    )
-                with ce:
+                # Render card + inline icon buttons in one row
+                st.markdown(
+                    '<div class="list-row" style="align-items:center;">'
+                    + '<div class="lr-left">'
+                    + '<div class="lr-title">' + str(r["Mês"]) + '</div>'
+                    + '<div class="lr-sub">' + sub + '</div>'
+                    + '</div>'
+                    + '<div class="lr-right" style="display:flex;align-items:center;gap:8px;">'
+                    + '<div class="lr-value">' + f'{float(r["Total"]):,.0f}' + '€</div>'
+                    + '</div>'
+                    + '</div>',
+                    unsafe_allow_html=True
+                )
+                bc1, bc2, bc3 = st.columns([8, 1, 1])
+                with bc2:
                     if st.button("✏️", key=f"pe_{i}"):
                         st.session_state.edit_pat = i; st.rerun()
-                with cd:
+                with bc3:
                     if st.button("🗑", key=f"pd_{i}"):
                         save_db(df_p.drop(i).reset_index(drop=True), "patrimonio"); st.rerun()
 
@@ -1284,8 +1284,6 @@ with tab2:
                     if st.button("Cancelar", key=f"fca_{i}"):
                         st.session_state.edit_flx = None; st.rerun()
             else:
-                cc, ce, cd = st.columns([10, 1, 1])
-                with cc:
                     cat_line = cat_detail if cat_detail else "↑ " + f'{float(r["Entradas"]):,.0f}' + "€ &nbsp;·&nbsp; ↓ " + f'{float(r["Saidas"]):,.0f}' + "€"
                     st.markdown(
                         '<div class="list-row">'
@@ -1300,18 +1298,17 @@ with tab2:
                         + '</div>',
                         unsafe_allow_html=True
                     )
-                with ce:
-                    if st.button("✏️", key=f"fe_{i}"):
-                        st.session_state.edit_flx = i; st.rerun()
-                with cd:
-                    if st.button("🗑", key=f"fd_{i}"):
-                        mes_apagar = r["Mês"]
-                        # Remove from poupanca
-                        save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
-                        # Remove all category rows for this month from despesas
-                        if not df_desp.empty and "Mês" in df_desp.columns:
-                            save_db(df_desp[df_desp["Mês"] != mes_apagar].reset_index(drop=True), "despesas")
-                        st.rerun()
+                    bf1, bf2, bf3 = st.columns([8, 1, 1])
+                    with bf2:
+                        if st.button("✏️", key=f"fe_{i}"):
+                            st.session_state.edit_flx = i; st.rerun()
+                    with bf3:
+                        if st.button("🗑", key=f"fd_{i}"):
+                            mes_apagar = r["Mês"]
+                            save_db(df_f.drop(i).reset_index(drop=True), "poupanca")
+                            if not df_desp.empty and "Mês" in df_desp.columns:
+                                save_db(df_desp[df_desp["Mês"] != mes_apagar].reset_index(drop=True), "despesas")
+                            st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1479,7 +1476,7 @@ with tab3:
                     badge_style = "background:#F1F5F9;color:#94A3B8;" if done_ex else "background:" + cor + "18;color:" + cor + ";"
                     desc_block  = '<div style="font-size:11px;color:#94A3B8;margin-top:2px;">' + desc_s + '</div>' if desc_s else ""
 
-                    # Card branca por exercício
+                    # Card branca por exercício — botão real mas estilizado
                     circle_bg    = "#059669" if done_ex else "#FFFFFF"
                     circle_brd   = "#059669" if done_ex else "#CBD5E1"
                     circle_inner = '<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="1.5,6 4.5,9 10.5,3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' if done_ex else ""
@@ -1499,16 +1496,24 @@ with tab3:
                         + desc_block + '</div>'
                         + '</div>'
                     )
-                    # Invisible checkbox triggers the toggle — overlaid on the card
-                    col_card, col_ck = st.columns([8, 1])
-                    with col_card:
-                        st.markdown(card_html_ex, unsafe_allow_html=True)
-                    with col_ck:
-                        if st.button("​", key="ck_" + ck + "_" + chosen_key,
-                                     help=nome_s, use_container_width=True):
-                            st.session_state[chosen_key][ck] = not done_ex
-                            save_checks()
-                            st.rerun()
+                    st.markdown(card_html_ex, unsafe_allow_html=True)
+                    # Small tap button hidden under the card via CSS — no black bar
+                    st.markdown("""
+                        <style>
+                        div[data-testid="stButton"].ex-toggle > button {
+                            position:relative; margin-top:-62px; height:56px;
+                            background:transparent!important; border:none!important;
+                            box-shadow:none!important; width:100%!important;
+                            opacity:0!important; cursor:pointer!important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    st.markdown('<div class="ex-toggle">', unsafe_allow_html=True)
+                    if st.button("toggle", key="ck_" + ck + "_" + chosen_key):
+                        st.session_state[chosen_key][ck] = not done_ex
+                        save_checks()
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
 
                 if dados["nota"]:
                     st.markdown('<div class="note-strip" style="margin:4px 0 16px;">' + dados["nota"] + '</div>', unsafe_allow_html=True)
